@@ -1,3 +1,6 @@
+local fs = require("fyler.lib.fs")
+local store = require("fyler.views.file_tree.store")
+
 local M = {}
 
 ---@class FylerTreeNode
@@ -43,6 +46,41 @@ function TreeNode:find(addr)
   end
 
   return nil
+end
+
+function TreeNode:update()
+  if not self.open then
+    return
+  end
+
+  local meta_data = store.get(self.data)
+  local items, err = fs.listdir(meta_data.path)
+  if err then
+    return
+  end
+
+  self.children = vim
+    .iter(self.children)
+    :filter(function(child) ---@param child FylerTreeNode
+      return vim.iter(items):any(function(item)
+        return item.path == store.get(child.data).path and item.type == store.get(child.data).type
+      end)
+    end)
+    :totable()
+
+  for _, item in ipairs(items) do
+    if
+      not vim.iter(self.children):any(function(child) ---@param child FylerTreeNode
+        return store.get(child.data).path == item.path and store.get(child.data).type == item.type
+      end)
+    then
+      self:add_child(self.data, store.set(item))
+    end
+  end
+
+  for _, child in ipairs(self.children) do
+    child:update()
+  end
 end
 
 return M

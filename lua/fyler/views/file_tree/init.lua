@@ -17,8 +17,9 @@ local FileTreeView = {}
 FileTreeView.__index = FileTreeView
 
 ---@class FylerTreeViewOpenOpts
----@field cwd    string
----@field kind?  FylerWinKind
+---@field cwd           string
+---@field focused_path? string
+---@field kind?         FylerWinKind
 
 ---@param opts FylerTreeViewOpenOpts
 function FileTreeView.new(opts)
@@ -44,6 +45,27 @@ end
 ---@param opts FylerTreeViewOpenOpts
 function FileTreeView:open(opts)
   local mappings = config.get_reverse_mappings("file_tree")
+
+  self:update_tree()
+
+  local rel = vim.fs.relpath(opts.cwd, opts.focused_path or "")
+  local parts = {}
+  if rel then
+    parts = vim.split(rel, "/")
+  end
+
+  local focused_node = self.tree_node
+  for _, part in pairs(parts) do
+    local child = vim.iter(focused_node.children):find(function(child)
+      return store.get(child.data).name == part
+    end)
+    if not child then
+      break
+    end
+    child.open = true
+    child:update()
+    focused_node = child
+  end
 
   self.win = Win {
     enter = true,
@@ -81,7 +103,11 @@ function FileTreeView:open(opts)
     },
     -- stylua: ignore end
     render = function()
-      return ui.FileTree(self:update_tree():tree_table_from_node().children)
+      return ui.FileTree(self:tree_table_from_node().children)
+    end,
+    on_open = function()
+      vim.fn.search(string.format("/%s$", focused_node.data), "w")
+      vim.cmd(":normal _")
     end,
   }
 
@@ -105,44 +131,7 @@ end
 
 ---@return FylerTreeView
 function FileTreeView:update_tree()
-  ---@param tree_node FylerTreeNode
-  local function dfs(tree_node)
-    if not tree_node.open then
-      return
-    end
-
-    local meta_data = store.get(tree_node.data)
-    local items, err = fs.listdir(meta_data.path)
-    if err then
-      return
-    end
-
-    tree_node.children = vim
-      .iter(tree_node.children)
-      :filter(function(child) ---@param child FylerTreeNode
-        return vim.iter(items):any(function(item)
-          return item.path == store.get(child.data).path and item.type == store.get(child.data).type
-        end)
-      end)
-      :totable()
-
-    for _, item in ipairs(items) do
-      if
-        not vim.iter(tree_node.children):any(function(child) ---@param child FylerTreeNode
-          return store.get(child.data).path == item.path and store.get(child.data).type == item.type
-        end)
-      then
-        tree_node:add_child(tree_node.data, store.set(item))
-      end
-    end
-
-    for _, child in ipairs(tree_node.children) do
-      dfs(child)
-    end
-  end
-
-  dfs(self.tree_node)
-
+  self.tree_node:update()
   return self
 end
 
@@ -279,10 +268,11 @@ local M = {
   instance = {},
 }
 
----@param opts { cwd?: string, kind?: FylerWinKind }
+---@param opts { cwd?: string, kind?: FylerWinKind, focused_path?: string }
 function M.open(opts)
   opts = opts or {}
   opts.cwd = opts.cwd or fs.getcwd()
+  opts.focused_path = opts.focused_path or api.nvim_buf_get_name(0)
   opts.kind = opts.kind or config.get_view("file_tree").kind
 
   if M.instance.close then

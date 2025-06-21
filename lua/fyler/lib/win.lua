@@ -24,6 +24,7 @@ local api = vim.api
 ---@field border        string|string[]
 ---@field bufname       string
 ---@field render?       fun(): FylerUi
+---@field on_open?      fun(): nil
 ---@field bufopts       table
 ---@field winopts       table
 ---@field augroup       string
@@ -103,7 +104,7 @@ function Win:show()
 
   -- Call render as soon as window open
   if self.render then
-    self.ui:render(self.render())
+    self.ui:render(self.render(), self.on_open)
   end
 
   api.nvim_buf_set_name(self.bufnr, self.bufname)
@@ -160,6 +161,7 @@ end
 ---@field kind?          FylerWinKind
 ---@field enter?         boolean
 ---@field render?        fun(): FylerUiLine[]
+---@field on_open?       fun(): nil
 ---@field title?         any
 ---@field title_pos?     string
 ---@field footer?        any
@@ -186,6 +188,7 @@ return setmetatable({}, {
       kind           = opts.kind or "float",
       enter          = opts.enter or false,
       render         = opts.render,
+      on_open = opts.on_open,
       title          = opts.title,
       title_pos      = opts.title_pos,
       footer         = opts.footer,
@@ -200,8 +203,8 @@ return setmetatable({}, {
     }
     -- stylua: ignore end
 
-    instance.ui = Ui.new(instance)
-    setmetatable(instance, Win)
+    instance.ui = ui.new(instance)
+    setmetatable(instance, win)
 
     return instance
   end,

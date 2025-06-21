@@ -83,9 +83,13 @@ function Ui:_render(lines)
 end
 
 ---@param lines FylerUiLine[]
-function Ui:render(lines)
+---@param cb? function(): nil
+function Ui:render(lines, cb)
   vim.schedule(function()
     self:_render(lines)
+    if cb then
+      cb()
+    end
   end)
 end
 
