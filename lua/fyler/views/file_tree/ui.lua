@@ -1,3 +1,5 @@
+---@module 'fyler.views.file_tree.init'
+local IconProvider = require("fyler.lib.ui.icon-provider")
 local components = require("fyler.lib.ui.components")
 
 local Line = components.Line
@@ -6,82 +8,53 @@ local Mark = components.Mark
 
 local M = {}
 
----@param type string
----@param name string
-function M.get_icon(type, name)
-  local has_icons, minicons = pcall(require, "mini.icons")
-  if not has_icons then
-    return "", ""
-  end
-
-  local status, icon, hl = pcall(minicons.get, type, name)
-  if not status then
-    return "", ""
-  end
-
-  return icon, hl
-end
-
-local BrokenLinkIcon = M.get_icon("default", "default")
-
+---@param tbl FylerTreeViewNode[]
 local function get_sorted(tbl)
   table.sort(tbl, function(a, b)
-    if a:is_directory() and not b:is_directory() then
+    if a.metadata:is_directory() and not b.metadata:is_directory() then
       return true
-    elseif not a:is_directory() and b:is_directory() then
+    elseif not a.metadata:is_directory() and b.metadata:is_directory() then
       return false
     else
-      return a.name < b.name
+      return a.metadata.name < b.metadata.name
     end
   end)
 
   return tbl
 end
 
----@param tbl table
+---@param treeNodes FylerTreeViewNode[]
 ---@return FylerUiLine[]
-local function TREE_STRUCTURE(tbl, depth)
+local function TREE_STRUCTURE(treeNodes, depth)
+  local get_icon = IconProvider.get_provider()
   depth = depth or 0
 
-  if not tbl then
+  if not treeNodes then
     return {}
   end
 
   local lines = {}
-  for _, item in ipairs(get_sorted(tbl)) do
-    local icon, hl
-
-    if item.type == "directory" then
-      icon = M.get_icon(item.type, item.name)
-      hl = "FylerBlue"
-    elseif item.type == "link" and item.links_to.type == nil then
-      -- This is a broken link
-      icon = BrokenLinkIcon
-      hl = "FylerRed"
-    elseif item.type == "link" then
-      icon = M.get_icon(item.links_to.type, item.name)
-      hl = "FylerGreen"
-    else
-      icon, hl = M.get_icon(item.type, item.name)
-    end
+  for _, treeNode in ipairs(get_sorted(treeNodes)) do
+    local metadata = treeNode.metadata
+    local icon = get_icon(metadata)
 
     table.insert(
       lines,
       Line {
         words = {
           Word(string.rep(" ", depth * 2)),
-          Word(icon, item.type == "directory" and "FylerBlue" or hl),
-          Word(string.format(" %s", item.name), item.type == "directory" and "FylerBlue" or ""),
-          Word(string.format(" /%d", item.key)),
+          Word(icon.text, icon.hl),
+          Word(string.format(" %s", metadata.name), metadata.type == "directory" and "FylerBlue" or ""),
+          Word(string.format(" /%d", treeNode.node.data)),
         },
-        marks = item.type == "link" and {
-          Mark("--> " .. item.links_to.path, "FylerYellow", item.key),
+        marks = metadata.type == "link" and {
+          Mark("--> " .. metadata.links_to.path, "FylerYellow", treeNode.node.data),
         } or {},
       }
     )
 
-    if item.children then
-      for _, line in ipairs(TREE_STRUCTURE(item.children, depth + 1)) do
+    if treeNode.children then
+      for _, line in ipairs(TREE_STRUCTURE(treeNode.children, depth + 1)) do
         table.insert(lines, line)
       end
     end
@@ -90,6 +63,8 @@ local function TREE_STRUCTURE(tbl, depth)
   return lines
 end
 
+---@param tbl FylerTreeViewNode
+---@return FylerUiLine[]
 function M.FileTree(tbl)
   return TREE_STRUCTURE(tbl)
 end

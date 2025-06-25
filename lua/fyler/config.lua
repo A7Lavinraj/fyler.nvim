@@ -33,7 +33,10 @@ local defaults = {
       },
     },
   },
+  icon_provider = 'mini.icons',
 }
+
+M.values = vim.deepcopy(defaults, true)
 
 ---@param name string
 function M.get_view(name)

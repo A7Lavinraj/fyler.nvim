@@ -138,26 +138,17 @@ function FileTreeView:update_tree()
   return self
 end
 
----@return table
+---@alias FylerTreeViewNode { node: FylerTreeNode, metadata: FileMetadata, children: FylerTreeViewNode[] }
+---@return FylerTreeViewNode
 function FileTreeView:tree_table_from_node()
   ---@param tree_node FylerTreeNode
+  ---@return FylerTreeViewNode
   local function get_tbl(tree_node)
-    local sub_tbl = store.get(tree_node.data)
-    sub_tbl.key = tree_node.data
-
-    if sub_tbl:is_directory() then
-      sub_tbl.children = {}
-    end
-
-    if not tree_node.open then
-      return sub_tbl
-    end
-
-    for _, child in ipairs(tree_node.children) do
-      table.insert(sub_tbl.children, get_tbl(child))
-    end
-
-    return sub_tbl
+    return {
+      node = tree_node,
+      metadata = store.get(tree_node.data),
+      children = tree_node.open and vim.iter(tree_node.children):map(get_tbl):totable() or {},
+    }
   end
 
   return get_tbl(self.tree_node)
@@ -219,7 +210,7 @@ function FileTreeView:get_diff()
   local recent_tree_hash = {}
 
   local function save_hash(root)
-    recent_tree_hash[root.key] = root.path
+    recent_tree_hash[root.node.data] = root.metadata.path
 
     for _, child in ipairs(root.children or {}) do
       save_hash(child)
