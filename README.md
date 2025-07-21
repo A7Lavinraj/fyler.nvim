@@ -7,7 +7,7 @@ A modern neovim file tree which can edit your file system like a buffer
 
 ![showcase](https://github.com/user-attachments/assets/c1dca603-7199-4a90-9a26-50dda96dec6e)
 
-## Installtion
+## Installation
 
 ### Stable version
 
