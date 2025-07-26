@@ -112,8 +112,8 @@ local defaults = {
 
   -- Views configuration:
   -- Every view config contains following options to be customized
-  -- `width` a number in (0, 1]
-  -- `height` a number in (0, 1]
+  -- `width` a number in (0, 1] for relative size or [1, ...] for absolute size
+  -- `height` a number in (0, 1] for relative size or [1, ...] for absolute size
 
   -- `kind` could be as following:
   -- 'float',

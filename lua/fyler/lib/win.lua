@@ -134,8 +134,8 @@ function Win:config()
     winconfig.row = math.floor((1 - self.height) * 0.5 * vim.o.lines)
   end
 
-  winconfig.width = math.ceil(self.width * vim.o.columns)
-  winconfig.height = math.ceil(self.height * vim.o.lines)
+  winconfig.width = (self.width <= 1.0) and math.ceil(self.width * vim.o.columns) or self.width
+  winconfig.height = (self.height <= 1.0) and math.ceil(self.height * vim.o.lines) or self.height
 
   return winconfig
 end
