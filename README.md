@@ -294,7 +294,7 @@ fyler.open()
 fyler.open({ cwd = "~/" })
 
 -- Open with specific kind
-fyler.open({ cwd = "split_left_most" })
+fyler.open({ kind = "split_left_most" })
 ```
 
 ## TODOS
