@@ -31,6 +31,13 @@ function M.abspath(path) return vim.fs.abspath(path) end
 function M.relpath(base, path) return vim.fs.relpath(base, path) end
 
 ---@param path string
+---@return boolean
+function M.is_valid_path(path)
+  local _, err = uv.fs_stat(path)
+  return err == nil
+end
+
+---@param path string
 ---@return string|nil, string|nil
 function M.resolve_link(path)
   local res_path = nil
