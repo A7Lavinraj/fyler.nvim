@@ -334,7 +334,7 @@ end
 ---@param view FylerExplorerView
 function M.try_focus_buffer(view)
   return schedule_async(function(arg)
-    if arg.file == "" then return end
+    if not fs.is_valid_path(arg.file) then return end
 
     if not view.win:has_valid_winid() then return end
 

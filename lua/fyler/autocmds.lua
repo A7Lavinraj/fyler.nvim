@@ -51,9 +51,6 @@ function M.setup(config)
   api.nvim_create_autocmd("BufEnter", {
     group = augroup,
     callback = function(arg)
-      -- Don't interfere with terminal buffers
-      if vim.bo[arg.buf].buftype == "terminal" or vim.bo[arg.buf].filetype == "toggleterm" then return end
-
       local cur_instance = require("fyler.views.explorer").get_current_instance()
       if cur_instance then cur_instance:_action("try_focus_buffer")(arg) end
     end,
