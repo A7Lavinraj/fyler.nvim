@@ -33,7 +33,8 @@ function M.relpath(base, path) return vim.fs.relpath(base, path) end
 ---@param path string
 ---@return boolean
 function M.is_valid_path(path)
-  local _, err = uv.fs_stat(path)
+  local prefixless_path = string.gsub(path, "^fyler://", "")
+  local _, err = uv.fs_stat(prefixless_path)
   return err == nil
 end
 
