@@ -1,6 +1,5 @@
 local TreeNode = require("fyler.views.explorer.struct")
 local Win = require("fyler.lib.win")
-local cache = require("fyler.cache")
 local config = require("fyler.config")
 local store = require("fyler.views.explorer.store")
 local util = require("fyler.lib.util")
@@ -29,7 +28,7 @@ function ExplorerView:open(opts)
     function(x, y) mappings[x] = self:_action(util.camel_to_snake(string.format("n%s", y))) end
   )
 
-  cache.set_entry("recent_win", api.nvim_get_current_win())
+  FYLER_GLOBAL_STATE.origin_win = api.nvim_get_current_win()
   current_dir = opts.cwd
 
   -- stylua: ignore start

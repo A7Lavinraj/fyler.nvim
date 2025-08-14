@@ -1,6 +1,7 @@
 local uv = vim.loop or vim.uv
 
-local FYLER_TESTING_DIR = ".tests/repos/"
+FYLER_TESTING_DIR = ".tests/repos/"
+FYLER_GLOBAL_STATE = {}
 
 ---@param path string
 ---@return boolean

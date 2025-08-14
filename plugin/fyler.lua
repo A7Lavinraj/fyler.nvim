@@ -1,4 +1,9 @@
+if vim.g.loaded_fyler == 1 then return end
+vim.g.loaded_fyler = 1
+
 local util = require("fyler.lib.util")
+
+FYLER_GLOBAL_STATE = {}
 
 vim.api.nvim_create_user_command("Fyler", function(args)
   local opts = {}
