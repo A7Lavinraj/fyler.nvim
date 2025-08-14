@@ -1,6 +1,5 @@
 local a = require("fyler.lib.async")
 local algos = require("fyler.views.explorer.algos")
-local cache = require("fyler.cache")
 local config = require("fyler.config")
 local confirm_view = require("fyler.views.confirm")
 local fs = require("fyler.lib.fs")
@@ -37,11 +36,11 @@ function M.n_select(view)
       view.root:find(key):toggle()
       api.nvim_exec_autocmds("User", { pattern = "RefreshView" })
     else
-      local recent_win = cache.get_entry("recent_win")
+      local origin_win = FYLER_GLOBAL_STATE.origin_win
 
-      if recent_win and util.is_valid_winid(recent_win) then
-        fn.win_execute(recent_win, string.format("edit %s", entry:get_path()))
-        fn.win_gotoid(recent_win)
+      if origin_win and util.is_valid_winid(origin_win) then
+        fn.win_execute(origin_win, string.format("edit %s", entry:get_path()))
+        fn.win_gotoid(origin_win)
 
         if config.values.views.explorer.close_on_select then view.win:hide() end
       end
@@ -57,9 +56,9 @@ function M.n_select_tab(view)
 
     local entry = store.get_entry(key)
     if not entry:is_dir() then
-      local recent_win = cache.get_entry("recent_win")
+      local origin_win = FYLER_GLOBAL_STATE.origin_win
 
-      if recent_win and util.is_valid_winid(recent_win) then
+      if origin_win and util.is_valid_winid(origin_win) then
         fn.execute(string.format("tabedit %s", entry:get_path()))
 
         if config.values.views.explorer.close_on_select then view.win:hide() end
@@ -76,10 +75,10 @@ function M.n_select_v_split(view)
 
     local entry = store.get_entry(key)
     if not entry:is_dir() then
-      local recent_win = cache.get_entry("recent_win")
+      local origin_win = FYLER_GLOBAL_STATE.origin_win
 
-      if recent_win and util.is_valid_winid(recent_win) then
-        fn.win_gotoid(recent_win)
+      if origin_win and util.is_valid_winid(origin_win) then
+        fn.win_gotoid(origin_win)
         fn.execute(string.format("vsplit %s", entry:get_path()))
 
         if config.values.views.explorer.close_on_select then view.win:hide() end
@@ -96,10 +95,10 @@ function M.n_select_split(view)
 
     local entry = store.get_entry(key)
     if not entry:is_dir() then
-      local recent_win = cache.get_entry("recent_win")
+      local origin_win = FYLER_GLOBAL_STATE.origin_win
 
-      if recent_win and util.is_valid_winid(recent_win) then
-        fn.win_gotoid(recent_win)
+      if origin_win and util.is_valid_winid(origin_win) then
+        fn.win_gotoid(origin_win)
         fn.execute(string.format("split %s", entry:get_path()))
 
         if config.values.views.explorer.close_on_select then view.win:hide() end
@@ -339,14 +338,14 @@ function M.try_focus_buffer(view)
     if not view.win:has_valid_winid() then return end
 
     if string.match(arg.file, "^fyler://*") then
-      local recent_win = cache.get_entry("recent_win")
+      local origin_win = FYLER_GLOBAL_STATE.origin_win
 
-      if not util.is_valid_winid(recent_win) then return end
+      if not util.is_valid_winid(origin_win) then return end
 
-      local recent_bufname = fn.bufname(api.nvim_win_get_buf(recent_win))
-      if recent_bufname == "" or string.match(recent_bufname, "^fyler://*") then return end
+      local origin_bufname = fn.bufname(api.nvim_win_get_buf(origin_win))
+      if origin_bufname == "" or string.match(origin_bufname, "^fyler://*") then return end
 
-      arg.file = fs.abspath(recent_bufname)
+      arg.file = fs.abspath(origin_bufname)
     end
 
     if not vim.startswith(arg.file, view.cwd) then

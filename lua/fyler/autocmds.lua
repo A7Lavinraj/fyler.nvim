@@ -59,17 +59,16 @@ function M.setup(config)
   api.nvim_create_autocmd("BufEnter", {
     group = augroup,
     callback = vim.schedule_wrap(function(arg)
-      local explorer = require("fyler.views.explorer").instance
+      local explorer = require("fyler.views.explorer").get_current_instance()
       if not explorer then return end
 
       if vim.fn.bufname(arg.buf) == explorer.win.bufname then return end
 
-      if api.nvim_get_current_win() == explorer.win.winid then
-        for option, _ in pairs(require("fyler.config").get_view_config("explorer").win.win_opts) do
-          if not explorer.win:has_valid_winid() then return end
+      local current_win = api.nvim_get_current_win()
+      if current_win == explorer.win.winid then return end
 
-          vim.wo[explorer.win.winid][option] = vim.w[explorer.win.winid][option]
-        end
+      for option, _ in pairs(explorer.win.win_opts) do
+        vim.wo[current_win][option] = FYLER_GLOBAL_STATE.opt[option]
       end
     end),
   })

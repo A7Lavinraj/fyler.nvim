@@ -1,5 +1,8 @@
 std = "selene/globals"
 
+[config]
+globals = [ "FYLER_GLOBAL_STATE" ]
+
 [rules]
 shadowing = "allow"
 multiple_statements = "allow"

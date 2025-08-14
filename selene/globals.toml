@@ -5,5 +5,8 @@ name = "globals"
 [vim]
 any = true
 
+[FYLER_GLOBAL_STATE]
+any = true
+
 [bit]
 any = true

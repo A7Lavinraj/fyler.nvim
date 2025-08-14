@@ -200,11 +200,16 @@ end
 function Win:show()
   if self:has_valid_winid() then return end
 
-  local recent_win = api.nvim_get_current_win()
+  local origin_win = api.nvim_get_current_win()
+  FYLER_GLOBAL_STATE.opt = {}
+
+  for option, _ in pairs(self.win_opts) do
+    FYLER_GLOBAL_STATE.opt[option] = vim.opt[option]._value
+  end
+
   local win_config = self:config()
 
   self.bufnr = api.nvim_create_buf(false, true)
-
   if self.bufname then api.nvim_buf_set_name(self.bufnr, self.bufname) end
 
   if win_config.split and (win_config.split:match("_all$") or win_config.split:match("_most$")) then
@@ -222,7 +227,7 @@ function Win:show()
 
     self.winid = api.nvim_get_current_win()
 
-    if not self.enter then api.nvim_set_current_win(recent_win) end
+    if not self.enter then api.nvim_set_current_win(origin_win) end
 
     api.nvim_win_set_buf(self.winid, self.bufnr)
   else
@@ -240,7 +245,6 @@ function Win:show()
   end
 
   for option, value in pairs(self.win_opts) do
-    vim.w[self.winid][option] = vim.wo[self.winid][option]
     vim.wo[self.winid][option] = value
   end
 
