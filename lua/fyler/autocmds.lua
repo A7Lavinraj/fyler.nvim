@@ -55,23 +55,6 @@ function M.setup(config)
       if cur_instance then cur_instance:_action("try_focus_buffer")(arg) end
     end,
   })
-
-  api.nvim_create_autocmd("BufEnter", {
-    group = augroup,
-    callback = vim.schedule_wrap(function(arg)
-      local explorer = require("fyler.views.explorer").get_current_instance()
-      if not explorer then return end
-
-      if vim.fn.bufname(arg.buf) == explorer.win.bufname then return end
-
-      local current_win = api.nvim_get_current_win()
-      if current_win == explorer.win.winid then return end
-
-      for option, _ in pairs(explorer.win.win_opts) do
-        vim.wo[current_win][option] = FYLER_GLOBAL_STATE.opt[option]
-      end
-    end),
-  })
 end
 
 return M
