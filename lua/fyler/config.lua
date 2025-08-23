@@ -26,6 +26,7 @@ local util = require("fyler.lib.util")
 ---| "GotoParent" Jump to parent directory
 ---| "GotoCwd" Jump to current working directory
 ---| "GotoNode" Jump to node under cursor
+---| "TogglePreview" Preview file under cursor without switching focus
 
 ---@alias FylerConfigMappingsConfirm
 ---| "Confirm" Confirm actions
@@ -107,6 +108,7 @@ local defaults = {
       ["^"] = "GotoParent",
       ["="] = "GotoCwd",
       ["."] = "GotoNode",
+      ["P"] = "TogglePreview",
     },
     confirm = {
       ["y"] = "Confirm",

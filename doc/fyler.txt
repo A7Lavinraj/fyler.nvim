@@ -32,6 +32,7 @@ Fyler supports plenty of options to customize. Following are default values
         ["^"] = "GotoParent",
         ["="] = "GotoCwd",
         ["."] = "GotoNode",
+        ["P"] = "TogglePreview",
       },
       confirm = {
         ["y"] = "Confirm",
