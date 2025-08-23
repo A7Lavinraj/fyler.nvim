@@ -19,17 +19,19 @@ function ExplorerView:open(opts)
   local view_config = config.get_view_config("explorer", opts.kind)
   local mappings = {}
 
-  local user_actions = config.get_commands("explorer")
-  local user_action_names = vim.tbl_keys(user_actions)
-
-  util.tbl_each(config.get_mappings("explorer"), function(key, action_name)
-    if vim.tbl_contains(user_action_names, action_name) then
-      mappings[key] = user_actions[action_name](self)
+  util.tbl_each(config.get_mappings("explorer"), function(key, action)
+    if type(action) == "function" then
+      -- if action is a function, wrap it to pass self as the first argument
+      mappings[key] = function() action(self) end
       return
+    elseif type(action) == "string" then
+      local success, native_action = pcall(self._action, self, util.camel_to_snake(string.format("n%s", action)))
+      if not success or native_action == nil then
+        vim.notify("" .. string.format("Mapping action %s is not available", action), vim.log.levels.WARN)
+        return
+      end
+      mappings[key] = native_action
     end
-    local native_action = self:_action(util.camel_to_snake(string.format("n%s", action_name)))
-    if native_action == nil then error(string.format("Mapping action %s is not available", action_name)) end
-    mappings[key] = native_action
   end)
 
   -- stylua: ignore start

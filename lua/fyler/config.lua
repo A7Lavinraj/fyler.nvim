@@ -113,11 +113,6 @@ local defaults = {
       ["n"] = "Discard",
     },
   },
-  commands = {
-    explorer = {},
-    confirm = {},
-  },
-
   -- "views" is a map to corresponding configuration
   views = {
     confirm = {
@@ -277,13 +272,6 @@ end
 function M.get_mappings(name)
   assert(name, "name is required")
   return M.values.mappings[name]
-end
-
--- Returns customized commands for a particular "view"
----@param name string
-function M.get_commands(name)
-  assert(name, "name is required")
-  return M.values.commands[name]
 end
 
 -- Type check for configuration option
