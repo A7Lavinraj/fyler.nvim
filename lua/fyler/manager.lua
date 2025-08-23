@@ -27,7 +27,7 @@ function FylerManager:new()
 
   vim.api.nvim_create_autocmd("TabClosed", {
     group = vim.api.nvim_create_augroup("FylerManager", { clear = true }),
-    callback = function(args)
+    callback = function()
       vim.schedule(function()
         local current_tabs = vim.api.nvim_list_tabpages()
         local current_tabs_set = {}
