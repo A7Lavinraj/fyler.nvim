@@ -9,6 +9,7 @@ local M = {}
 local fn = vim.fn
 
 ---@class FylerExplorerView
+---@field id integer
 ---@field root FylerTreeNode
 ---@field win FylerWin
 local ExplorerView = {}
@@ -44,13 +45,13 @@ function ExplorerView:open(opts)
     border        = view_config.win.border,
     bottom        = view_config.win.bottom,
     buf_opts      = view_config.win.buf_opts,
-    bufname       = string.format("fyler://%s", opts.cwd),
+    bufname       = string.format("fyler://%s%d", opts.cwd, self.id),
     enter         = opts.enter,
     height        = view_config.win.height,
     kind          = opts.kind,
     left          = view_config.win.left,
     mappings      = mappings,
-    name          = "Explorer",
+    name          = "Explorer"..self.id,
     render        = self:_action("refreshview"),
     right         = view_config.win.right,
     user_autocmds = {
@@ -113,6 +114,8 @@ function ExplorerView:ch_kind(kind)
   if self.win then self.win.kind = kind end
 end
 
+-- WARN: thie should be deprecated in favor of manager:open
+--
 ---@param opts { cwd: string, enter: boolean, kind: FylerWinKind|string }
 function M.open(opts)
   M.instance = (function()
@@ -127,5 +130,7 @@ function M.open(opts)
     M.instance:open(opts)
   end
 end
+function ExplorerView:new(id) return setmetatable({ id = id }, ExplorerView) end
 
+M.ExplorerView = ExplorerView
 return M

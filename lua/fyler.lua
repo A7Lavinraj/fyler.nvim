@@ -24,13 +24,14 @@ function M.setup(options)
 
   local util = require("fyler.lib.util")
   local fs = require("fyler.lib.fs")
-  local explorer = require("fyler.views.explorer")
-  local log = require("fyler.log")
+  -- local explorer = require("fyler.views.explorer")
+  -- local log = require("fyler.log")
+  local manager = require("fyler.manager").get_manager()
 
   -- "Fyler.nvim" API to launch explorer with defined options
   M.open = vim.schedule_wrap(
     function(opts)
-      explorer.open(util.tbl_merge_keep(opts or {}, {
+      manager:open(util.tbl_merge_keep(opts or {}, {
         cwd = fs.getcwd(),
         enter = true,
         kind = config.get_view_config("explorer").win.kind,
@@ -40,16 +41,7 @@ function M.setup(options)
 
   -- "Fyler.nvim" API to track (given or current) buffer
   ---@param file string|nil
-  M.track_buffer = function(file)
-    if not explorer.instance then
-      log.error("No existing explorer")
-      return
-    end
-
-    explorer.instance:_action("try_focus_buffer") {
-      file = file or vim.fn.expand("%:p"),
-    }
-  end
+  M.track_buffer = function(file) manager:track_buffer(file) end
 end
 
 return M
