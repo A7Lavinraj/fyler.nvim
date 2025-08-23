@@ -24,6 +24,28 @@ function FylerManager:new()
   self.__index = self
 
   _instance = instance
+
+  vim.api.nvim_create_autocmd("TabClosed", {
+    group = vim.api.nvim_create_augroup("FylerManager", { clear = true }),
+    callback = function(args)
+      vim.schedule(function()
+        local current_tabs = vim.api.nvim_list_tabpages()
+        local current_tabs_set = {}
+        -- Create a set for O(1) lookups
+        for _, tab in ipairs(current_tabs) do
+          current_tabs_set[tab] = true
+        end
+        -- Single pass to identify and remove invalid entries
+        for tabnr, explorer_id in pairs(_instance.tab_to_id) do
+          if not current_tabs_set[tabnr] then
+            _instance.tab_to_id[tabnr] = nil
+            _instance.instances[explorer_id] = nil
+          end
+        end
+      end)
+    end,
+  })
+
   return instance
 end
 
