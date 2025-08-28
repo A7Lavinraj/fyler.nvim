@@ -142,6 +142,52 @@ function M.n_goto_node(view)
 end
 
 ---@param view FylerExplorerView
+function M.n_toggle_preview(view)
+  return function()
+    local itemid = algos.match_itemid(vim.api.nvim_get_current_line())
+    if not itemid then return end
+
+    local entry = store.get_entry(itemid)
+    local function open_entry(path)
+      if util.is_valid_winid(view.win.old_winid) then
+        vim.api.nvim_win_call(view.win.old_winid, function() vim.cmd("keepjumps edit " .. path) end)
+      end
+    end
+    view.preview = view.preview or {
+      enabled = false,
+      initial_path = nil,
+    }
+    view.preview.enabled = not view.preview.enabled
+
+    local function toggle_keymap(mode, lhs, callback, enabled)
+      if enabled then
+        vim.keymap.set(mode, lhs, callback, { buffer = view.win.bufnr })
+      else
+        pcall(vim.keymap.del, mode, lhs, { buffer = view.win.bufnr })
+      end
+    end
+    local function preview_move(direction)
+      vim.cmd("normal! " .. direction)
+      local next_id = algos.match_itemid(vim.api.nvim_get_current_line())
+      if next_id then open_entry(store.get_entry(next_id):get_path()) end
+    end
+
+    toggle_keymap("n", "j", function() preview_move("j") end, view.preview.enabled)
+    toggle_keymap("n", "k", function() preview_move("k") end, view.preview.enabled)
+
+    if view.preview.enabled then
+      -- Store the entry only when entering preview mode
+      view.preview.initial_path = vim.api.nvim_buf_get_name(view.win.old_bufnr)
+      open_entry(entry:get_path())
+    else
+      -- Restore the initial entry when exiting preview mode
+      if view.preview.initial_path then open_entry(view.preview.initial_path) end
+      view.preview.initial_path = nil
+    end
+  end
+end
+
+---@param view FylerExplorerView
 ---@param tbl table
 ---@return table
 local function get_tbl(view, tbl)
