@@ -47,6 +47,24 @@ local util = require "fyler.lib.util"
 ---@field kind_presets table<WinKind|string, table>
 ---@field win_opts table
 
+---@class FylerConfigPopupPermissionKeys
+---@field accept string|string[]
+---@field reject string|string[]
+
+---@class FylerConfigPopupPermission
+---@field border FylerConfigWinBorder|string[]
+---@field buf_opts table
+---@field enter boolean
+---@field height string
+---@field kind WinKind
+---@field keys FylerConfigPopupPermissionKeys
+---@field left string
+---@field top string
+---@field width string
+
+---@class FylerConfigPopup
+---@field permission FylerConfigPopupPermission
+
 ---@class FylerConfig
 ---@field close_on_select boolean
 ---@field confirm_simple boolean
@@ -57,6 +75,7 @@ local util = require "fyler.lib.util"
 ---@field icon_provider FylerConfigIconProvider
 ---@field indentscope FylerConfigIndentScope
 ---@field mappings table<string, FylerConfigExplorerMapping>
+---@field popup FylerConfigPopup
 ---@field track_current_buffer boolean
 ---@field win FylerConfigWin
 
@@ -77,6 +96,24 @@ local util = require "fyler.lib.util"
 ---@field kind_presets table<WinKind|string, table>|nil
 ---@field win_opts table|nil
 
+---@class FylerSetupOptionsPopupPermissionKeys
+---@field accept string|string[]|nil
+---@field reject string|string[]|nil
+
+---@class FylerSetupOptionsPopupPermission
+---@field border FylerConfigWinBorder|string[]|nil
+---@field buf_opts table|nil
+---@field enter boolean|nil
+---@field height string|nil
+---@field kind WinKind|nil
+---@field keys FylerSetupOptionsPopupPermissionKeys|nil
+---@field left string|nil
+---@field top string|nil
+---@field width string|nil
+
+---@class FylerSetupOptionsPopup
+---@field permission FylerSetupOptionsPopupPermission|nil
+
 ---@class FylerSetupOptions
 ---@field close_on_select boolean|nil
 ---@field confirm_simple boolean|nil
@@ -86,6 +123,7 @@ local util = require "fyler.lib.util"
 ---@field icon_provider FylerConfigIconProvider|nil
 ---@field indentscope FylerSetupOptionsIndentScope|nil
 ---@field mappings table<string, FylerConfigExplorerMapping>|nil
+---@field popup FylerSetupOptionsPopup|nil
 ---@field track_current_buffer boolean|nil
 ---@field win FylerSetupOptionsWin|nil
 
@@ -139,6 +177,24 @@ local function defaults()
       ["<BS>"] = "CollapseNode",
     },
     track_current_buffer = true,
+    popup = {
+      permission = {
+        border = vim.fn.has "nvim-0.11" == 1 and vim.o.winborder or "rounded",
+        enter = true,
+        height = "0.3rel",
+        width = "0.4rel",
+        left = "0.3rel",
+        top = "0.35rel",
+        kind = "float",
+        keys = {
+          accept = "y",
+          reject = "n",
+        },
+        buf_opts = {
+          modifiable = false,
+        },
+      },
+    },
     win = {
       border = vim.fn.has "nvim-0.11" == 1 and vim.o.winborder or "rounded",
       buf_opts = {
@@ -270,6 +326,8 @@ function M.setup(opts)
     { M.values.git_status, "table" },
     { M.values.indentscope, "table" },
     { M.values.track_current_buffer, "boolean" },
+    { M.values.popup, "table" },
+    { M.values.popup.permission, "table" },
     { M.values.win, "table" },
   }
 
