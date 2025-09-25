@@ -27,7 +27,7 @@ function M.setup(opts)
   local util = require "fyler.lib.util"
 
   M.open = vim.schedule_wrap(function(opts)
-    opts = opts or {};
+    opts = opts or {}
     local dir = opts.dir or fs.cwd()
     local kind = opts.kind or config.values.win.kind
     local instance = explorer.instance(dir)
