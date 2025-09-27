@@ -204,6 +204,19 @@ require("fyler").setup({
     ["<BS>"] = "CollapseNode",
   },
 
+  popups = {
+    permission = {
+      -- Respective popup configuration:
+      -- border
+      -- height
+      -- width
+      -- left
+      -- right
+      -- top
+      -- bottom
+    }
+  }
+
   -- Buffer tracking
   track_current_buffer = true,
 

@@ -31,7 +31,7 @@ local util = require "fyler.lib.util"
 ---@field group string
 ---@field marker string
 
----@alias FylerConfigWinBorder
+---@alias FylerConfigBorder
 ---| "bold"
 ---| "double"
 ---| "none"
@@ -41,11 +41,20 @@ local util = require "fyler.lib.util"
 ---| "solid"
 
 ---@class FylerConfigWin
----@field border FylerConfigWinBorder|string[]
+---@field border FylerConfigBorder|string[]
 ---@field buf_opts table
 ---@field kind WinKind
 ---@field kind_presets table<WinKind|string, table>
 ---@field win_opts table
+
+---@class FylerConfigPopup
+---@field border FylerConfigBorder|string[]
+---@field bottom string
+---@field height string
+---@field left string
+---@field right string
+---@field top string
+---@field width string
 
 ---@class FylerConfig
 ---@field close_on_select boolean
@@ -57,6 +66,7 @@ local util = require "fyler.lib.util"
 ---@field icon_provider FylerConfigIconProvider
 ---@field indentscope FylerConfigIndentScope
 ---@field mappings table<string, FylerConfigExplorerMapping>
+---@field popups table<string, FylerConfigPopup>
 ---@field track_current_buffer boolean
 ---@field win FylerConfigWin
 
@@ -71,11 +81,20 @@ local util = require "fyler.lib.util"
 ---@field marker string|nil
 
 ---@class FylerSetupOptionsWin
----@field border FylerConfigWinBorder|string[]|nil
+---@field border FylerConfigBorder|string[]|nil
 ---@field buf_opts table|nil
 ---@field kind WinKind|nil
 ---@field kind_presets table<WinKind|string, table>|nil
 ---@field win_opts table|nil
+
+---@class FylerSetupOptionsPopup
+---@field border FylerConfigBorder|string[]|nil
+---@field bottom string|nil
+---@field height string|nil
+---@field left string|nil
+---@field right string|nil
+---@field top string|nil
+---@field width string|nil
 
 ---@class FylerSetupOptions
 ---@field close_on_select boolean|nil
@@ -86,10 +105,28 @@ local util = require "fyler.lib.util"
 ---@field icon_provider FylerConfigIconProvider|nil
 ---@field indentscope FylerSetupOptionsIndentScope|nil
 ---@field mappings table<string, FylerConfigExplorerMapping>|nil
+---@field popups table<string, FylerSetupOptionsPopup>|nil
 ---@field track_current_buffer boolean|nil
 ---@field win FylerSetupOptionsWin|nil
 
 local M = {}
+
+---@return string
+local function border()
+  if vim.fn.has "nvim-0.11" == 1 and vim.o.winborder ~= "" then
+    return vim.o.winborder
+  end
+
+  return "rounded"
+end
+
+local function winhighlight()
+  return table.concat({
+    "Normal:FylerNormal",
+    "FloatBorder:FylerBorder",
+    "FloatTitle:FylerBorder",
+  }, ",")
+end
 
 ---@return FylerConfig
 local function defaults()
@@ -138,9 +175,18 @@ local function defaults()
       ["#"] = "CollapseAll",
       ["<BS>"] = "CollapseNode",
     },
+    popups = {
+      permission = {
+        border = border(),
+        width = "0.4rel",
+        height = "0.3rel",
+        top = "0.35rel",
+        left = "0.3rel",
+      },
+    },
     track_current_buffer = true,
     win = {
-      border = vim.fn.has "nvim-0.11" == 1 and vim.o.winborder or "rounded",
+      border = border(),
       buf_opts = {
         filetype = "Fyler",
         syntax = "Fyler",
@@ -189,7 +235,7 @@ local function defaults()
         cursorline = true,
         number = true,
         relativenumber = true,
-        winhighlight = "Normal:Normal,FloatBorder:FloatBorder,FloatTitle:FloatBorder",
+        winhighlight = winhighlight(),
         wrap = false,
       },
     },
@@ -201,6 +247,11 @@ function M.build_win(kind)
   local win = M.values.win
   local kind_preset = M.values.win.kind_presets[kind]
   return util.tbl_merge_force(win, kind_preset)
+end
+
+---@param name string
+function M.build_popup(name)
+  return M.values.popups[name]
 end
 
 function M.get_reversed_maps()
@@ -268,17 +319,18 @@ function M.setup(opts)
   M.values = util.tbl_merge_force(defaults(), opts)
 
   local checks = {
-    { M.values.hooks, "table" },
-    { M.values.hooks.on_delete, "function", true },
-    { M.values.hooks.on_rename, "function", true },
-    { M.values.hooks.on_highlight, "function", true },
-    { M.values.icon_provider, { "string", "function" } },
-    { M.values.mappings, "table" },
     { M.values.close_on_select, "boolean" },
     { M.values.confirm_simple, "boolean" },
     { M.values.default_explorer, "boolean" },
     { M.values.git_status, "table" },
+    { M.values.hooks, "table" },
+    { M.values.hooks.on_delete, "function", true },
+    { M.values.hooks.on_highlight, "function", true },
+    { M.values.hooks.on_rename, "function", true },
+    { M.values.icon_provider, { "string", "function" } },
     { M.values.indentscope, "table" },
+    { M.values.mappings, "table" },
+    { M.values.popups, "table" },
     { M.values.track_current_buffer, "boolean" },
     { M.values.win, "table" },
   }

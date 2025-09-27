@@ -6,12 +6,20 @@ local Win = require "fyler.lib.win"
 local Popup = {}
 Popup.__index = Popup
 
+local winhighlight = table.concat({
+  "Normal:FylerNormal",
+  "FloatBorder:FylerBorder",
+  "FloatTitle:FylerBorder",
+}, ",")
+
 ---@return Popup
 function Popup.new()
   local instance = {
     config = {
       buf_opts = {},
-      win_opts = {},
+      win_opts = {
+        winhighlight = winhighlight,
+      },
       mappings = {},
     },
   }

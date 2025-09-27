@@ -13,7 +13,25 @@ CONFIGURATION                                                     *fyler.config*
 Fyler supports plenty of options to customize. Following are default values
 
 >lua
-  {
+
+  ---@return string
+  local function border()
+    if vim.fn.has "nvim-0.11" == 1 and vim.o.winborder ~= "" then
+      return vim.o.winborder
+    end
+
+    return "rounded"
+  end
+
+  local function winhighlight()
+    return table.concat({
+      "Normal:FylerNormal",
+      "FloatBorder:FylerBorder",
+      "FloatTitle:FylerBorder",
+    }, ",")
+  end
+
+  local defaults = {
     close_on_select = true,
     confirm_simple = false,
     default_explorer = false,
@@ -58,9 +76,18 @@ Fyler supports plenty of options to customize. Following are default values
       ["#"] = "CollapseAll",
       ["<BS>"] = "CollapseNode",
     },
+    popups = {
+      permission = {
+        border = border(),
+        width = "0.4rel",
+        height = "0.3rel",
+        top = "0.35rel",
+        left = "0.3rel",
+      },
+    },
     track_current_buffer = true,
     win = {
-      border = "single",
+      border = border(),
       buf_opts = {
         filetype = "Fyler",
         syntax = "Fyler",
@@ -109,7 +136,7 @@ Fyler supports plenty of options to customize. Following are default values
         cursorline = true,
         number = true,
         relativenumber = true,
-        winhighlight = "Normal:Normal,FloatBorder:FloatBorder,FloatTitle:FloatTitle",
+        winhighlight = winhighlight()
         wrap = false,
       },
     },

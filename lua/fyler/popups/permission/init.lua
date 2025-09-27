@@ -1,5 +1,6 @@
 local Popup = require "fyler.lib.popup"
 local a = require "fyler.lib.async"
+local config = require "fyler.config"
 local ui = require "fyler.popups.permission.ui"
 
 ---@class PopupPermission
@@ -9,16 +10,8 @@ M.__index = M
 ---@param message { str: string, hlg: string }[]
 ---@param on_choice fun(choice: boolean)
 M.create = a.wrap(vim.schedule_wrap(function(message, on_choice)
+  local popup = config.build_popup "permission"
   Popup.new()
-    :enter()
-    :border(vim.fn.has "nvim-0.11" == 1 and vim.o.winborder or "rounded")
-    :buf_opt("modifiable", false)
-    :win_opt("winhighlight", "Normal:Normal,FloatBorder:FloatBorder,FloatTitle:FloatBorder")
-    :height("0.3rel")
-    :kind("float")
-    :left("0.3rel")
-    :top("0.35rel")
-    :width("0.4rel")
     :action("y", function(self)
       return function()
         self.win:hide()
@@ -31,6 +24,12 @@ M.create = a.wrap(vim.schedule_wrap(function(message, on_choice)
         on_choice(false)
       end
     end)
+    :border(popup.border)
+    :buf_opt("modifiable", false)
+    :enter()
+    :height(popup.height)
+    :kind("float")
+    :left(popup.left)
     :render(function(self)
       return function()
         self.win.ui:render {
@@ -38,6 +37,8 @@ M.create = a.wrap(vim.schedule_wrap(function(message, on_choice)
         }
       end
     end)
+    :top(popup.top)
+    :width(popup.width)
     :create()
 end))
 
