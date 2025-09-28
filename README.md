@@ -97,7 +97,7 @@ The main branch includes the newest features but may contain bugs.
 {
   "A7Lavinraj/fyler.nvim",
   dependencies = { "nvim-mini/mini.icons" },
-  opts = {}
+  opts = {},
 }
 ```
 
@@ -107,7 +107,7 @@ The main branch includes the newest features but may contain bugs.
 {
   "A7Lavinraj/fyler.nvim",
   dependencies = { "nvim-tree/nvim-web-devicons" },
-  opts = { icon_provider = "nvim_web_devicons" }
+  opts = { icon_provider = "nvim_web_devicons" },
 }
 ```
 
@@ -214,8 +214,8 @@ require("fyler").setup({
       -- right
       -- top
       -- bottom
-    }
-  }
+    },
+  },
 
   -- Buffer tracking
   track_current_buffer = true,
@@ -251,8 +251,8 @@ telescope.setup({
   extensions = {
     fyler_zoxide = {
       -- Extension configuration
-    }
-  }
+    },
+  },
 })
 
 telescope.load_extension("fyler_zoxide")
