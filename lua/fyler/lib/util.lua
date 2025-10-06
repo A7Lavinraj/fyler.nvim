@@ -1,6 +1,11 @@
 local M = {}
 
-local api = vim.api
+---@param n integer
+---@param ... any
+function M.select_n(n, ...)
+  local x = select(n, ...)
+  return x
+end
 
 ---@generic T
 ---@param tbl T[]
@@ -118,41 +123,41 @@ end
 ---@param winid number|nil
 ---@return boolean
 function M.is_valid_winid(winid)
-  return type(winid) == "number" and api.nvim_win_is_valid(winid)
+  return type(winid) == "number" and vim.api.nvim_win_is_valid(winid)
 end
 
 ---@param bufnr number|nil
 ---@return boolean
 function M.is_valid_bufnr(bufnr)
-  return type(bufnr) == "number" and api.nvim_buf_is_valid(bufnr)
+  return type(bufnr) == "number" and vim.api.nvim_buf_is_valid(bufnr)
 end
 
 ---@param winid integer
 ---@param option string
 ---@return any
 function M.get_win_option(winid, option)
-  return api.nvim_get_option_value(option, { win = winid, scope = "local" })
+  return vim.api.nvim_get_option_value(option, { win = winid, scope = "local" })
 end
 
 ---@param bufnr integer
 ---@param option string
 ---@return any
 function M.get_buf_option(bufnr, option)
-  return api.nvim_get_option_value(option, { buf = bufnr, scope = "local" })
+  return vim.api.nvim_get_option_value(option, { buf = bufnr, scope = "local" })
 end
 
 ---@param winid integer
 ---@param option string
 ---@param value any
 function M.set_win_option(winid, option, value)
-  api.nvim_set_option_value(option, value, { win = winid, scope = "local" })
+  vim.api.nvim_set_option_value(option, value, { win = winid, scope = "local" })
 end
 
 ---@param bufnr integer
 ---@param option string
 ---@param value any
 function M.set_buf_option(bufnr, option, value)
-  api.nvim_set_option_value(option, value, { buf = bufnr, scope = "local" })
+  vim.api.nvim_set_option_value(option, value, { buf = bufnr, scope = "local" })
 end
 
 ---@param fn function
@@ -183,6 +188,11 @@ function M.debounce(name, timeout, fn)
 
     fn()
   end, timeout)
+end
+
+---@param index integer|nil
+function M.cmd_history(index)
+  return vim.fn.histget("cmd", index or -1)
 end
 
 return M

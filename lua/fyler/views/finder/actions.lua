@@ -1,45 +1,44 @@
-local e_util = require "fyler.explorer.util"
+local config = require "fyler.config"
+local fs = require "fyler.lib.fs"
+local fyler = require "fyler"
+local parser = require "fyler.views.finder.parser"
 local util = require "fyler.lib.util"
-local M = {}
-local fn = vim.fn
-local api = vim.api
 
----@param self Explorer
-function M.n_close(self)
-  return function()
-    self:close()
-  end
+local M = {}
+
+function M.n_close()
+  return fyler.close
 end
 
----@param self Explorer
+---@param self Finder
 function M.n_select(self)
   return function()
-    local ref_id = e_util.parse_ref_id(api.nvim_get_current_line())
+    local ref_id = parser.parse_ref_id(vim.api.nvim_get_current_line())
     if not ref_id then
       return
     end
 
-    local entry = self.file_tree:node_entry(ref_id)
+    local entry = self.files:node_entry(ref_id)
     if not entry then
       return
     end
 
     if entry:isdir() then
       if entry.open then
-        self.file_tree:collapse_node(ref_id)
+        self.files:collapse_node(ref_id)
       else
-        self.file_tree:expand_node(ref_id)
+        self.files:expand_node(ref_id)
       end
 
       self:dispatch_refresh()
     else
       if util.is_valid_winid(self.win.old_winid) then
-        if self.config.values.close_on_select then
-          self:close()
+        if config.values.views.finder.close_on_select then
+          self:exec_action "n_close"
         end
 
-        api.nvim_set_current_win(self.win.old_winid)
-        api.nvim_win_call(self.win.old_winid, function()
+        vim.api.nvim_set_current_win(self.win.old_winid)
+        vim.api.nvim_win_call(self.win.old_winid, function()
           vim.cmd.edit(vim.fn.fnameescape(entry.path))
         end)
       end
@@ -47,19 +46,19 @@ function M.n_select(self)
   end
 end
 
----@param self Explorer
+---@param self Finder
 function M.n_select_tab(self)
   return function()
-    local ref_id = e_util.parse_ref_id(api.nvim_get_current_line())
+    local ref_id = parser.parse_ref_id(vim.api.nvim_get_current_line())
     if not ref_id then
       return
     end
 
-    local entry = self.file_tree:node_entry(ref_id)
+    local entry = self.files:node_entry(ref_id)
     if not entry:isdir() then
       if util.is_valid_winid(self.win.old_winid) then
-        if self.config.values.close_on_select then
-          self:close()
+        if config.values.views.finder.close_on_select then
+          self:exec_action "n_close"
         end
 
         vim.cmd.tabedit(entry.path)
@@ -68,69 +67,64 @@ function M.n_select_tab(self)
   end
 end
 
----@param self Explorer
+---@param self Finder
 function M.n_select_v_split(self)
   return function()
-    local ref_id = e_util.parse_ref_id(api.nvim_get_current_line())
+    local ref_id = parser.parse_ref_id(vim.api.nvim_get_current_line())
     if not ref_id then
       return
     end
 
-    local entry = self.file_tree:node_entry(ref_id)
+    local entry = self.files:node_entry(ref_id)
     if not entry:isdir() then
       if util.is_valid_winid(self.win.old_winid) then
-        if self.config.values.close_on_select then
-          self:close()
+        if config.values.views.finder.close_on_select then
+          self:exec_action "n_close"
         end
 
-        api.nvim_set_current_win(self.win.old_winid)
+        vim.api.nvim_set_current_win(self.win.old_winid)
         vim.cmd.vsplit(entry.path)
       end
     end
   end
 end
 
----@param self Explorer
+---@param self Finder
 function M.n_select_split(self)
   return function()
-    local ref_id = e_util.parse_ref_id(api.nvim_get_current_line())
+    local ref_id = parser.parse_ref_id(vim.api.nvim_get_current_line())
     if not ref_id then
       return
     end
 
-    local entry = self.file_tree:node_entry(ref_id)
+    local entry = self.files:node_entry(ref_id)
     if not entry:isdir() then
       if util.is_valid_winid(self.win.old_winid) then
-        api.nvim_set_current_win(self.win.old_winid)
-        if self.config.values.close_on_select then
-          self:close()
+        vim.api.nvim_set_current_win(self.win.old_winid)
+        if config.values.views.finder.close_on_select then
+          self:exec_action "n_close"
         end
 
-        api.nvim_set_current_win(self.win.old_winid)
+        vim.api.nvim_set_current_win(self.win.old_winid)
         vim.cmd.split(entry.path)
       end
     end
   end
 end
 
----@param self Explorer
+---@param self Finder
 function M.n_collapse_all(self)
   return function()
-    self.file_tree:collapse_all()
+    self.files:collapse_all()
     self:dispatch_refresh()
   end
 end
 
----@param self Explorer
+---@param self Finder
 function M.n_goto_parent(self)
   return function()
-    local current_dir = self:getcwd()
-    if not current_dir then
-      return
-    end
-
-    local parent_dir = fn.fnamemodify(current_dir, ":h")
-    if parent_dir == self:getcwd() then
+    local parent_dir = vim.fn.fnamemodify(self.dir, ":h")
+    if parent_dir == self.dir then
       return
     end
 
@@ -139,34 +133,33 @@ function M.n_goto_parent(self)
   end
 end
 
----@param self Explorer
+---@param self Finder
 function M.n_goto_cwd(self)
   return function()
-    if self:getcwd() == self.dir then
+    if self.dir == fs.cwd() then
       return
     end
 
-    self:chdir(self.dir)
+    self:chdir(fs.cwd())
     self:dispatch_refresh()
   end
 end
 
----@param self Explorer
+---@param self Finder
 function M.n_goto_node(self)
   return function()
-    local ref_id = e_util.parse_ref_id(api.nvim_get_current_line())
+    local ref_id = parser.parse_ref_id(vim.api.nvim_get_current_line())
     if not ref_id then
       return
     end
 
-    local entry = self.file_tree:node_entry(ref_id)
+    local entry = self.files:node_entry(ref_id)
     if not entry then
       return
     end
 
     if entry:isdir() then
       self:chdir(entry.path)
-
       self:dispatch_refresh()
     else
       M.n_select(self)()
@@ -174,36 +167,36 @@ function M.n_goto_node(self)
   end
 end
 
----@param self Explorer
+---@param self Finder
 function M.n_collapse_node(self)
   return function()
-    local ref_id = e_util.parse_ref_id(api.nvim_get_current_line())
+    local ref_id = parser.parse_ref_id(vim.api.nvim_get_current_line())
     if not ref_id then
       return
     end
 
-    local entry = self.file_tree:node_entry(ref_id)
+    local entry = self.files:node_entry(ref_id)
     if not entry then
       return
     end
 
     -- should not collapse root, so get it's id
-    local root_ref_id = self.file_tree.tree.root and self.file_tree.tree.root.value
+    local root_ref_id = self.files.tree.root and self.files.tree.root.value
     if entry:isdir() and ref_id == root_ref_id then
       return
     end
 
-    local collapse_target = self.file_tree:find_parent(ref_id)
+    local collapse_target = self.files:find_parent(ref_id)
     if (not collapse_target) or (not entry.open) and collapse_target == root_ref_id then
       return
     end
 
     local focus_ref_id
     if entry:isdir() and entry.open then
-      self.file_tree:collapse_node(ref_id)
+      self.files:collapse_node(ref_id)
       focus_ref_id = ref_id
     else
-      self.file_tree:collapse_node(collapse_target)
+      self.files:collapse_node(collapse_target)
       focus_ref_id = collapse_target
     end
 
@@ -213,11 +206,11 @@ function M.n_collapse_node(self)
       end
 
       local marker = string.format("/%05d", focus_ref_id)
-      local lines = api.nvim_buf_get_lines(self.win.bufnr, 0, -1, false)
+      local lines = vim.api.nvim_buf_get_lines(self.win.bufnr, 0, -1, false)
 
       for ln, line in ipairs(lines) do
         if line:find(marker, 1, true) then
-          api.nvim_win_set_cursor(self.win.winid, { ln, 0 })
+          vim.api.nvim_win_set_cursor(self.win.winid, { ln, 0 })
           break
         end
       end

@@ -1,6 +1,7 @@
 local uv = vim.loop or vim.uv
 
 FYLER_TESTING_DIR = vim.fs.joinpath(vim.uv.cwd(), ".tests")
+FYLER_TESTING_DIR_DATA = vim.fs.joinpath(FYLER_TESTING_DIR, "data")
 
 ---@param path string
 ---@return boolean

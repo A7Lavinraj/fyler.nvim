@@ -1,4 +1,3 @@
-local Ui = require "fyler.lib.ui"
 local util = require "fyler.lib.util"
 
 ---@alias WinKind
@@ -47,15 +46,12 @@ local util = require "fyler.lib.util"
 local Win = {}
 Win.__index = Win
 
-local api = vim.api
-local fn = vim.fn
-
 ---@return Win
 function Win.new(opts)
   opts = opts or {}
 
   local instance = util.tbl_merge_keep(opts, { kind = "float" })
-  instance.ui = Ui.new(instance)
+  instance.ui = require("fyler.lib.ui").new(instance)
   setmetatable(instance, Win)
 
   return instance
@@ -63,17 +59,24 @@ end
 
 ---@return boolean
 function Win:has_valid_winid()
-  return type(self.winid) == "number" and api.nvim_win_is_valid(self.winid)
+  return type(self.winid) == "number" and vim.api.nvim_win_is_valid(self.winid)
 end
 
 ---@return boolean
 function Win:has_valid_bufnr()
-  return type(self.bufnr) == "number" and api.nvim_buf_is_valid(self.bufnr)
+  return type(self.bufnr) == "number" and vim.api.nvim_buf_is_valid(self.bufnr)
 end
 
 ---@return boolean
 function Win:is_visible()
   return self:has_valid_winid() and self:has_valid_bufnr()
+end
+
+---@return integer|nil
+function Win:winbuf()
+  if self:has_valid_winid() then
+    return vim.api.nvim_win_get_buf(self.winid)
+  end
 end
 
 ---@return integer|nil, integer|nil
@@ -82,27 +85,27 @@ function Win:get_cursor()
     return
   end
 
-  return util.unpack(api.nvim_win_get_cursor(self.winid))
+  return util.unpack(vim.api.nvim_win_get_cursor(self.winid))
 end
 
 ---@param row integer
 ---@param col integer
 function Win:set_cursor(row, col)
   if self:has_valid_winid() then
-    api.nvim_win_set_cursor(self.winid, { row, col })
+    vim.api.nvim_win_set_cursor(self.winid, { row, col })
   end
 end
 
 function Win:focus()
-  local windows = fn.win_findbuf(self.bufnr)
+  local windows = vim.fn.win_findbuf(self.bufnr)
   if not windows or not windows[1] then
     return
   end
 
-  self.old_winid = api.nvim_get_current_win()
-  self.old_bufnr = api.nvim_get_current_buf()
+  self.old_winid = vim.api.nvim_get_current_win()
+  self.old_bufnr = vim.api.nvim_get_current_buf()
 
-  api.nvim_set_current_win(windows[1])
+  vim.api.nvim_set_current_win(windows[1])
 end
 
 function Win:update_config(config)
@@ -110,9 +113,9 @@ function Win:update_config(config)
     return
   end
 
-  local old_config = api.nvim_win_get_config(self.winid)
+  local old_config = vim.api.nvim_win_get_config(self.winid)
 
-  api.nvim_win_set_config(self.winid, util.tbl_merge_force(old_config, config))
+  vim.api.nvim_win_set_config(self.winid, util.tbl_merge_force(old_config, config))
 end
 
 function Win:update_title(title)
@@ -229,39 +232,39 @@ function Win:show()
   end
 
   -- Saving alternative "bufnr" and "winid" for later use
-  self.old_bufnr = api.nvim_get_current_buf()
-  self.old_winid = api.nvim_get_current_win()
+  self.old_bufnr = vim.api.nvim_get_current_buf()
+  self.old_winid = vim.api.nvim_get_current_win()
 
-  self.bufnr = api.nvim_create_buf(false, true)
+  self.bufnr = vim.api.nvim_create_buf(false, true)
   if self.bufname then
-    api.nvim_buf_set_name(self.bufnr, self.bufname)
+    vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
   end
 
   local win_config = self:config()
   if win_config.split and (win_config.split:match "_all$" or win_config.split:match "_most$") then
     if win_config.split == "left_most" then
-      api.nvim_command(string.format("topleft %dvsplit", win_config.width))
+      vim.api.nvim_command(string.format("topleft %dvsplit", win_config.width))
     elseif win_config.split == "above_all" then
-      api.nvim_command(string.format("topleft %dsplit", win_config.height))
+      vim.api.nvim_command(string.format("topleft %dsplit", win_config.height))
     elseif win_config.split == "right_most" then
-      api.nvim_command(string.format("botright %dvsplit", win_config.width))
+      vim.api.nvim_command(string.format("botright %dvsplit", win_config.width))
     elseif win_config.split == "below_all" then
-      api.nvim_command(string.format("botright %dsplit", win_config.height))
+      vim.api.nvim_command(string.format("botright %dsplit", win_config.height))
     else
       error(string.format("Invalid window kind `%s`", win_config.split))
     end
 
-    self.winid = api.nvim_get_current_win()
+    self.winid = vim.api.nvim_get_current_win()
     if not self.enter then
-      api.nvim_set_current_win(self.old_winid)
+      vim.api.nvim_set_current_win(self.old_winid)
     end
 
-    api.nvim_win_set_buf(self.winid, self.bufnr)
+    vim.api.nvim_win_set_buf(self.winid, self.bufnr)
   elseif self.kind:match "^replace" then
     self.winid = vim.api.nvim_get_current_win()
-    api.nvim_win_set_buf(self.winid, self.bufnr)
+    vim.api.nvim_win_set_buf(self.winid, self.bufnr)
   else
-    self.winid = api.nvim_open_win(self.bufnr, self.enter, win_config)
+    self.winid = vim.api.nvim_open_win(self.bufnr, self.enter, win_config)
 
     -- Trigger "BufEnter" event to focus buffer for floating window when "enter" enabled
     -- [IMPORTANT]: This is necessary because "self.winid" will not get set on time to automatically triggered.
@@ -274,8 +277,8 @@ function Win:show()
     self.on_show()
   end
 
-  self.augroup = api.nvim_create_augroup("Fyler-augroup-" .. self.bufnr, { clear = true })
-  self.namespace = api.nvim_create_namespace("Fyler-namespace-" .. self.bufnr)
+  self.augroup = vim.api.nvim_create_augroup("Fyler-augroup-" .. self.bufnr, { clear = true })
+  self.namespace = vim.api.nvim_create_namespace("Fyler-namespace-" .. self.bufnr)
 
   for keys, v in pairs(self.mappings or {}) do
     for _, k in ipairs(util.tbl_wrap(keys)) do
@@ -296,11 +299,11 @@ function Win:show()
   end
 
   for event, callback in pairs(self.autocmds or {}) do
-    api.nvim_create_autocmd(event, { group = self.augroup, buffer = self.bufnr, callback = callback })
+    vim.api.nvim_create_autocmd(event, { group = self.augroup, buffer = self.bufnr, callback = callback })
   end
 
   for event, callback in pairs(self.user_autocmds or {}) do
-    api.nvim_create_autocmd("User", { pattern = event, group = self.augroup, callback = callback })
+    vim.api.nvim_create_autocmd("User", { pattern = event, group = self.augroup, callback = callback })
   end
 
   if self.render then
@@ -309,7 +312,7 @@ function Win:show()
 end
 
 function Win:clear()
-  api.nvim_clear_autocmds { group = self.augroup }
+  vim.api.nvim_clear_autocmds { group = self.augroup }
 end
 
 function Win:hide()
@@ -320,15 +323,15 @@ function Win:hide()
     if
       util.is_valid_winid(self.winid)
       and util.is_valid_bufnr(self.old_bufnr)
-      and api.nvim_buf_is_loaded(self.old_bufnr)
+      and vim.api.nvim_buf_is_loaded(self.old_bufnr)
     then
-      util.try(api.nvim_win_set_buf, self.winid, self.old_bufnr)
+      util.try(vim.api.nvim_win_set_buf, self.winid, self.old_bufnr)
     end
 
-    util.try(api.nvim_buf_delete, self.bufnr, { force = true })
+    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
   else
-    util.try(api.nvim_win_close, self.winid, true)
-    util.try(api.nvim_buf_delete, self.bufnr, { force = true })
+    util.try(vim.api.nvim_win_close, self.winid, true)
+    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
   end
 
   self.winid = nil
@@ -344,15 +347,15 @@ function Win:recover()
   self:clear()
 
   if self.kind:match "^replace" or self.kind:match "^split" then
-    util.try(api.nvim_buf_delete, self.bufnr, { force = true })
+    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
   else
-    local cached_bufnr = api.nvim_get_current_buf()
-    util.try(api.nvim_win_close, self.winid, true)
-    util.try(api.nvim_buf_delete, self.bufnr, { force = true })
+    local cached_bufnr = vim.api.nvim_get_current_buf()
+    util.try(vim.api.nvim_win_close, self.winid, true)
+    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
 
     if util.is_valid_winid(self.old_winid) then
-      api.nvim_win_set_buf(self.old_winid, cached_bufnr)
-      api.nvim_set_current_win(self.old_winid)
+      vim.api.nvim_win_set_buf(self.old_winid, cached_bufnr)
+      vim.api.nvim_set_current_win(self.old_winid)
     end
   end
 end

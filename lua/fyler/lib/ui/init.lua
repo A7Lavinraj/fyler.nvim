@@ -2,8 +2,6 @@ local Component = require "fyler.lib.ui.component"
 local Renderer = require "fyler.lib.ui.renderer"
 local util = require "fyler.lib.util"
 
-local api = vim.api
-
 ---@class Ui
 ---@field win Win
 ---@field renderer UiRenderer
@@ -64,18 +62,18 @@ function Ui:_render(component)
 
   self.renderer:render(component)
 
-  api.nvim_buf_set_lines(self.win.bufnr, 0, -1, false, self.renderer.line)
-  api.nvim_buf_clear_namespace(self.win.bufnr, self.win.namespace, 0, -1)
+  vim.api.nvim_buf_set_lines(self.win.bufnr, 0, -1, false, self.renderer.line)
+  vim.api.nvim_buf_clear_namespace(self.win.bufnr, self.win.namespace, 0, -1)
 
   for _, highlight in ipairs(self.renderer.highlight) do
-    api.nvim_buf_set_extmark(self.win.bufnr, self.win.namespace, highlight.line, highlight.col_start, {
+    vim.api.nvim_buf_set_extmark(self.win.bufnr, self.win.namespace, highlight.line, highlight.col_start, {
       end_col = highlight.col_end,
       hl_group = highlight.highlight_group,
     })
   end
 
   for _, extmark in ipairs(self.renderer.extmark) do
-    api.nvim_buf_set_extmark(self.win.bufnr, self.win.namespace, extmark.line, 0, {
+    vim.api.nvim_buf_set_extmark(self.win.bufnr, self.win.namespace, extmark.line, 0, {
       virt_text = extmark.virt_text,
       virt_text_pos = extmark.virt_text_pos,
       virt_text_win_col = extmark.col,

@@ -132,7 +132,7 @@ fyler.open({
   kind = "split_left_most" -- (Optional) Use custom window layout
 })
 
--- Toggle Fyler with optional settings 
+-- Toggle Fyler with optional settings
 fyler.toggle({
   dir = "~/",              -- (Optional) Start in specific directory
   kind = "split_left_most" -- (Optional) Use custom window layout
@@ -153,21 +153,6 @@ require("fyler").setup({
   default_explorer = false,
   -- Move deleted files/directories to the system trash
   delete_to_trash = false,
-
-  -- Git integration
-  git_status = {
-    enabled = true,
-    symbols = {
-      Untracked = "?",
-      Added = "+",
-      Modified = "*",
-      Deleted = "x",
-      Renamed = ">",
-      Copied = "~",
-      Conflict = "!",
-      Ignored = "#",
-    },
-  },
 
   hooks = {
     -- function(path) end

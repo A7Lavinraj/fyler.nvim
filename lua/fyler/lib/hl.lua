@@ -1,8 +1,4 @@
-local hooks = require "fyler.hooks"
-
 local M = {}
-
-local api = vim.api
 
 ---@param dec integer
 local function to_hex(dec)
@@ -12,7 +8,7 @@ end
 ---@param name string
 ---@return string|nil
 local function get_fg(name)
-  local color = api.nvim_get_hl(0, { name = name })
+  local color = vim.api.nvim_get_hl(0, { name = name })
   if color["link"] then
     return get_fg(color["link"])
   elseif color["reverse"] and color["bg"] then
@@ -25,7 +21,7 @@ end
 ---@param name string
 ---@return string|nil
 local function get_bg(name)
-  local color = api.nvim_get_hl(0, { name = name })
+  local color = vim.api.nvim_get_hl(0, { name = name })
   if color["link"] then
     return get_bg(color["link"])
   elseif color["reverse"] and color["fg"] then
@@ -83,23 +79,14 @@ function M.setup()
     FylerFSDirectoryName = { fg = palette.fg },
     FylerFSFile          = { fg = palette.white },
     FylerFSLink          = { fg = palette.grey },
-    FylerGitAdded        = { fg = palette.green },
-    FylerGitConflict     = { fg = palette.red },
-    FylerGitDeleted      = { fg = palette.red },
-    FylerGitIgnored      = { fg = palette.grey },
-    FylerGitModified     = { fg = palette.yellow },
-    FylerGitRenamed      = { fg = palette.yellow },
-    FylerGitStaged       = { fg = palette.green },
-    FylerGitUnstaged     = { fg = palette.orange },
-    FylerGitUntracked    = { fg = palette.cyan },
     FylerIndentMarker    = { fg = palette.dark_grey },
   }
   -- stylua: ignore end
 
-  hooks.on_highlight(hl_groups, palette)
+  require("fyler.hooks").on_highlight(hl_groups, palette)
 
   for k, v in pairs(hl_groups) do
-    api.nvim_set_hl(0, k, v)
+    vim.api.nvim_set_hl(0, k, v)
   end
 end
 

@@ -1,9 +1,7 @@
-local util = require "fyler.lib.util"
-
 vim.api.nvim_create_user_command("Fyler", function(args)
   local opts = {}
   for _, farg in ipairs(args.fargs) do
-    local k, v = util.unpack(vim.split(farg, "="))
+    local k, v = require("fyler.lib.util").unpack(vim.split(farg, "="))
     opts[k] = v
   end
 
@@ -11,8 +9,9 @@ vim.api.nvim_create_user_command("Fyler", function(args)
 end, {
   nargs = "*",
   complete = function(arglead, cmdline)
+    local util = require "fyler.lib.util"
     if arglead:find "^kind=" then
-      return util.tbl_map(vim.tbl_keys(require("fyler.config").values.win.kind_presets), function(kind_preset)
+      return util.tbl_map(vim.tbl_keys(require("fyler.config").values.views.finder.win.kinds), function(kind_preset)
         return string.format("kind=%s", kind_preset)
       end)
     end

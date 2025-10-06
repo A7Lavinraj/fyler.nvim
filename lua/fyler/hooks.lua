@@ -1,9 +1,5 @@
-local util = require "fyler.lib.util"
-
 local M = {}
 local hooks = {}
-local fn = vim.fn
-local api = vim.api
 local lsp = vim.lsp
 
 -- Get attached active LSP clients
@@ -24,36 +20,36 @@ function hooks.on_delete(path)
     return
   end
 
-  local path_bufnr = fn.bufnr(path)
+  local path_bufnr = vim.fn.bufnr(path)
   if path_bufnr == -1 then
     return
   end
-  path_bufnr = path_bufnr == 0 and api.nvim_get_current_buf() or path_bufnr
+  path_bufnr = path_bufnr == 0 and vim.api.nvim_get_current_buf() or path_bufnr
 
-  api.nvim_buf_call(path_bufnr, function()
-    for _, winid in ipairs(fn.win_findbuf(path_bufnr)) do
-      api.nvim_win_call(winid, function()
-        if not api.nvim_win_is_valid(winid) or api.nvim_win_get_buf(winid) ~= path_bufnr then
+  vim.api.nvim_buf_call(path_bufnr, function()
+    for _, winid in ipairs(vim.fn.win_findbuf(path_bufnr)) do
+      vim.api.nvim_win_call(winid, function()
+        if not vim.api.nvim_win_is_valid(winid) or vim.api.nvim_win_get_buf(winid) ~= path_bufnr then
           return
         end
 
-        local alternate_bufnr = fn.bufnr "#"
-        if alternate_bufnr ~= path_bufnr and fn.buflisted(alternate_bufnr) == 1 then
-          return api.nvim_win_set_buf(winid, alternate_bufnr)
+        local alternate_bufnr = vim.fn.bufnr "#"
+        if alternate_bufnr ~= path_bufnr and vim.fn.buflisted(alternate_bufnr) == 1 then
+          return vim.api.nvim_win_set_buf(winid, alternate_bufnr)
         end
 
         ---@diagnostic disable-next-line: param-type-mismatch
         local has_previous = pcall(vim.cmd, "bprevious")
-        if has_previous and path_bufnr ~= api.nvim_win_get_buf(winid) then
+        if has_previous and path_bufnr ~= vim.api.nvim_win_get_buf(winid) then
           return
         end
 
-        local new_bufnr = api.nvim_create_buf(true, false)
-        api.nvim_win_set_buf(winid, new_bufnr)
+        local new_bufnr = vim.api.nvim_create_buf(true, false)
+        vim.api.nvim_win_set_buf(winid, new_bufnr)
       end)
     end
 
-    if api.nvim_buf_is_valid(path_bufnr) then
+    if vim.api.nvim_buf_is_valid(path_bufnr) then
       ---@diagnostic disable-next-line: param-type-mismatch
       pcall(vim.cmd, "bdelete! " .. path_bufnr)
     end
@@ -89,18 +85,18 @@ function hooks.on_rename(src, dst)
     end
   end
 
-  local src_bufnr = fn.bufnr(src)
+  local src_bufnr = vim.fn.bufnr(src)
   if src_bufnr >= 0 then
-    local dst_bufnr = fn.bufadd(dst)
-    util.set_buf_option(dst_bufnr, "buflisted", true)
+    local dst_bufnr = vim.fn.bufadd(dst)
+    require("fyler.lib.util").set_buf_option(dst_bufnr, "buflisted", true)
 
-    for _, winid in ipairs(fn.win_findbuf(src_bufnr)) do
-      api.nvim_win_call(winid, function()
+    for _, winid in ipairs(vim.fn.win_findbuf(src_bufnr)) do
+      vim.api.nvim_win_call(winid, function()
         vim.cmd("buffer " .. dst_bufnr)
       end)
     end
 
-    api.nvim_buf_delete(src_bufnr, { force = true })
+    vim.api.nvim_buf_delete(src_bufnr, { force = true })
   end
 
   for _, client in ipairs(clients) do
