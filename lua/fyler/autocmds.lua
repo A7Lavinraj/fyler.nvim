@@ -72,6 +72,14 @@ function M.setup(config)
       end
     end,
   })
+
+  api.nvim_create_autocmd("FileType", {
+    group = augroup,
+    pattern = { "Fyler" },
+    callback = function()
+      vim.opt_local.indentexpr = "v:lua.require('fyler.explorer.util').fyler_auto_indent()"
+    end,
+  })
 end
 
 return M
