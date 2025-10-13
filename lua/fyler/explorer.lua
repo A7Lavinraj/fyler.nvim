@@ -115,8 +115,8 @@ function M:open(dir, kind)
     autocmds      = {
       ["BufReadCmd"]   = function() self:dispatch_refresh() end,
       ["BufWriteCmd"]  = function() self:synchronize() end,
-      ["CursorMoved"]  = function() self:constrain_cursor() end,
-      ["CursorMovedI"] = function() self:constrain_cursor() end,
+      ["CursorMoved"]  = function() self:constrain_cursor() self:draw_indentscope() end,
+      ["CursorMovedI"] = function() self:constrain_cursor() self:draw_indentscope() end,
       ["TextChanged"]  = function() self:draw_indentscope() end,
       ["TextChangedI"] = function() self:draw_indentscope() end,
       ["WinClosed"]    = function() self:close() end,
@@ -286,7 +286,8 @@ local function process_line(self, ln)
     return
   end
 
-  local indent_depth = math.floor(cur_indent * 0.5)
+  local scrolled_cols = vim.fn.winsaveview().leftcol
+  local indent_depth = math.floor(cur_indent * 0.5) - scrolled_cols
   for i = 1, indent_depth do
     api.nvim_buf_set_extmark(self.win.bufnr, extmark_namespace, ln - 1, 0, {
       hl_mode = "combine",
