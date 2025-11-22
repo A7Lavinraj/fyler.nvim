@@ -291,6 +291,7 @@ function config.defaults()
             relativenumber = false,
             winhighlight = "Normal:FylerNormal,NormalNC:FylerNormalNC",
             wrap = false,
+            signcolumn = "no",
           },
         },
       },
