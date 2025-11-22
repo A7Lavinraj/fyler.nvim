@@ -17,10 +17,7 @@
 
 <br>
 
-<img
-  alt="Showcase"
-  src="https://github.com/user-attachments/assets/86081f07-7400-4766-9540-d1150523e3ed"
-/>
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/036ebf84-0053-4930-ae91-c0ae95bb417d" />
 
 ## Installation
 
@@ -310,3 +307,9 @@ This project draws inspiration from several excellent Neovim plugins and librari
 ## License
 
 This project is licensed under the Apache-2.0 License. See the repository for full license details.
+
+## Special thanks to all contributors
+
+<a href="https://github.com/A7Lavinraj/fyler.nvim/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=A7Lavinraj/fyler.nvim" alt="contributors" />
+</a>
