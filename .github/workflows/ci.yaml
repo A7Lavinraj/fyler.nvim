@@ -26,9 +26,17 @@ jobs:
         run: make lint
   test:
     name: Testing
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
     steps:
       - uses: actions/checkout@v3
       - uses: folke/github/neovim@main
       - name: Running tests
         run: FYLER_DEBUG=1 make test
+        shell: bash
