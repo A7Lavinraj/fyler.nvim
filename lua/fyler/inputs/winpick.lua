@@ -4,8 +4,13 @@ local util = require "fyler.lib.util"
 
 local M = {}
 
-function M.open(win_filter, onsubmit)
-  local chars = "asdfghjkl;"
+---@param win_filter integer[]
+---@param onsubmit fun(winid: integer|nil)
+---@param opts FylerConfigWinpickBuiltinOpts|nil
+function M.open(win_filter, onsubmit, opts)
+  opts = opts or {}
+  local chars = opts.chars or "asdfghjkl;"
+
   local winids = util.tbl_filter(vim.api.nvim_tabpage_list_wins(0), function(win)
     return not util.if_any(win_filter, function(c)
       return c == win
