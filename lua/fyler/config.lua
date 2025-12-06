@@ -39,6 +39,9 @@
 --- - "builtin": Floating labels on windows. Options: `chars` (default: "asdfghjkl;")
 --- - "nvim-window-picker": Uses s1n7ax/nvim-window-picker. Options passed to `pick_window()`.
 --- - Custom function: `function(win_filter, onsubmit, opts)`
+---   - `win_filter`: list of window IDs to exclude from selection (e.g. the fyler window)
+---   - `onsubmit`: callback function, call with selected window ID or nil to cancel
+---   - `opts`: the `opts` table from the winpick config
 ---
 --- Custom winpick function example:
 --- >lua
@@ -47,6 +50,7 @@
 ---       local winid = require("window-picker").pick_window()
 ---       onsubmit(winid)
 ---     end,
+---     opts = {}, -- this is what is passed as opts to the above function
 ---   }
 --- <
 
