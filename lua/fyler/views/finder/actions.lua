@@ -1,7 +1,6 @@
 local config = require "fyler.config"
 local fs = require "fyler.lib.fs"
 local fyler = require "fyler"
-local input = require "fyler.input"
 local parser = require "fyler.views.finder.parser"
 
 local M = {}
@@ -50,7 +49,7 @@ local function _select(self, opener)
     open_in_window(vim.api.nvim_get_current_win())
   else
     -- For split variants, we should pick windows
-    input.winpick.open({ self.win.winid }, open_in_window)
+    config.winpick_provider({ self.win.winid }, open_in_window, config.winpick_opts)
   end
 end
 

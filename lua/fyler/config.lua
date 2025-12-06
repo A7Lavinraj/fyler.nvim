@@ -21,8 +21,26 @@ local config = {}
 ---| "nvim_web_devicons"
 ---| "vim_nerdfont"
 
+---@alias FylerConfigIntegrationsWinpickName
+---| "builtin"
+---| "nvim-window-picker"
+
+---@alias FylerConfigIntegrationsWinpickFn fun(win_filter: integer[], onsubmit: fun(winid: integer|nil), opts: table)
+
+---Options for the built-in window picker
+---@class FylerConfigWinpickBuiltinOpts
+---@field chars string|nil Characters used for window selection (default: "asdfghjkl;")
+
+---@class FylerConfigWinpickTable
+---@field provider FylerConfigIntegrationsWinpickName|FylerConfigIntegrationsWinpickFn
+---@field opts FylerConfigWinpickBuiltinOpts|table<string, any>|nil
+
+---Winpick config: either a provider name/function (shorthand) or a table with provider and opts
+---@alias FylerConfigWinpick FylerConfigIntegrationsWinpickName|FylerConfigIntegrationsWinpickFn|FylerConfigWinpickTable
+
 ---@class FylerConfigIntegrations
 ---@field icon FylerConfigIntegrationsIcon
+---@field winpick FylerConfigWinpick
 
 ---@alias FylerConfigFinderMapping
 ---| "CloseView"
@@ -96,6 +114,7 @@ local config = {}
 
 ---@class FylerSetupIntegrations
 ---@field icon FylerConfigIntegrationsIcon|nil
+---@field winpick FylerConfigWinpick|nil
 
 ---@class FylerSetupIndentScope
 ---@field enabled boolean|nil
@@ -127,6 +146,10 @@ function config.defaults()
     hooks = {},
     integrations = {
       icon = "mini_icons",
+      winpick = {
+        provider = "builtin",
+        opts = {},
+      },
     },
     views = {
       finder = {
@@ -307,6 +330,16 @@ function config.setup(opts)
     config.icon_provider = require("fyler.integrations.icon")[icon_provider]
   else
     config.icon_provider = icon_provider
+  end
+
+  local winpick_config = config.values.integrations.winpick
+  -- Support shorthand: winpick = "provider-name" or winpick = function
+  local winpick_provider = type(winpick_config) == "table" and winpick_config.provider or winpick_config
+  config.winpick_opts = type(winpick_config) == "table" and winpick_config.opts or {}
+  if type(winpick_provider) == "string" then
+    config.winpick_provider = require("fyler.integrations.winpick")[winpick_provider]
+  else
+    config.winpick_provider = winpick_provider
   end
 
   require("fyler.autocmds").setup(config)
