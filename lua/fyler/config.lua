@@ -9,6 +9,22 @@
 
 --- INTEGRATIONS                                             *fyler.integrations*
 ---
+--- icon                                                *fyler.integrations.icon*
+---
+--- Icon provider for file and directory icons.
+---
+--- >lua
+---   integrations = {
+---     icon = "mini_icons",  -- default
+---   }
+--- <
+---
+--- Providers:
+--- - "mini_icons": Uses nvim-mini/mini.icons (default)
+--- - "nvim_web_devicons": Uses nvim-tree/nvim-web-devicons
+--- - "vim_nerdfont": Uses lambdalisue/vim-nerdfont
+--- - "none": Disables icons
+---
 --- winpick                                          *fyler.integrations.winpick*
 ---
 --- Window picker for selecting which window to open files in (split kinds).
