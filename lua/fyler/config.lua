@@ -7,6 +7,33 @@
 ---
 ---@tag fyler.setup
 
+--- INTEGRATIONS                                             *fyler.integrations*
+---
+--- winpick                                          *fyler.integrations.winpick*
+---
+--- Window picker for selecting which window to open files in (split kinds).
+---
+--- >lua
+---   integrations = {
+---     winpick = "builtin",  -- or { provider = "builtin", opts = {} }
+---   }
+--- <
+---
+--- Providers:
+--- - "builtin": Floating labels on windows. Options: `chars` (default: "asdfghjkl;")
+--- - "nvim-window-picker": Uses s1n7ax/nvim-window-picker. Options passed to `pick_window()`.
+--- - Custom function: `function(win_filter, onsubmit, opts)`
+---
+--- Custom winpick function example:
+--- >lua
+---   integrations = {
+---     winpick = function(win_filter, onsubmit, opts)
+---       local winid = require("window-picker").pick_window()
+---       onsubmit(winid)
+---     end,
+---   }
+--- <
+
 local util = require "fyler.lib.util"
 
 local config = {}

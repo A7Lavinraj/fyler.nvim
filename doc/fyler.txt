@@ -58,73 +58,32 @@ To setup Fyler put following code anywhere in your neovim runtime:
 <
 
 ------------------------------------------------------------------------------
-                                                          *fyler.integrations*
-INTEGRATIONS
+INTEGRATIONS                                             *fyler.integrations*
 
-                                                   *fyler.integrations.winpick*
-winpick ~
+winpick                                          *fyler.integrations.winpick*
 
-Window picker integration for selecting which window to open files in when
-using split window kinds. Configure via `integrations.winpick`:
+Window picker for selecting which window to open files in (split kinds).
 
 >lua
-  require("fyler").setup({
-    integrations = {
-      -- Shorthand: just the provider name
-      winpick = "builtin",
-
-      -- Or with options:
-      winpick = {
-        provider = "builtin",  -- "builtin" | "nvim-window-picker" | function
-        opts = {},             -- provider-specific options
-      },
-    },
-  })
+  integrations = {
+    winpick = "builtin",  -- or { provider = "builtin", opts = {} }
+  }
 <
 
 Providers:
-
-- `"builtin"`: Default picker. Displays floating labels on each window.
-  Options:
-    - `chars`: string of characters for selection (default: "asdfghjkl;")
-
-- `"nvim-window-picker"`: Integration with s1n7ax/nvim-window-picker.
-  Requires the plugin to be installed. Options are passed directly to
-  `pick_window()`. See nvim-window-picker documentation for available options.
-  Fyler automatically adds "fyler" to `filter_rules.bo.filetype`.
-
+- "builtin": Floating labels on windows. Options: `chars` (default: "asdfghjkl;")
+- "nvim-window-picker": Uses s1n7ax/nvim-window-picker. Options passed to `pick_window()`.
 - Custom function: `function(win_filter, onsubmit, opts)`
-    - `win_filter`: integer[] - window IDs to exclude
-    - `onsubmit`: function(winid) - callback with selected window ID or nil
-    - `opts`: table - the opts from config
 
-Examples:
+Custom winpick function example:
 >lua
-  -- Use nvim-window-picker with floating big letter hints
-  require("fyler").setup({
-    integrations = {
-      winpick = {
-        provider = "nvim-window-picker",
-        opts = {
-          hint = "floating-big-letter",
-          show_prompt = false,
-        },
-      },
-    },
-  })
-
-  -- Custom picker function
-  require("fyler").setup({
-    integrations = {
-      winpick = function(win_filter, onsubmit, opts)
-        -- your custom implementation
-        local winid = vim.api.nvim_get_current_win()
-        onsubmit(winid)
-      end,
-    },
-  })
+  integrations = {
+    winpick = function(win_filter, onsubmit, opts)
+      local winid = require("window-picker").pick_window()
+      onsubmit(winid)
+    end,
+  }
 <
-
 ------------------------------------------------------------------------------
                                                                 *fyler.defaults*
 DEFAULTS
