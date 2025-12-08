@@ -34,7 +34,9 @@ local function _select(self, opener)
   end
 
   local function open_in_window(winid)
-    winid = winid or self.win.winid
+    if not winid then
+      return
+    end
     vim.api.nvim_set_current_win(winid)
     opener(entry.path)
   end
