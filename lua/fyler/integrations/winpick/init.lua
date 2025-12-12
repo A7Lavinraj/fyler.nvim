@@ -2,6 +2,7 @@
 ---@field none fun(win_filter: integer[], onsubmit: fun(winid: integer|nil), opts: table|nil)
 ---@field builtin fun(win_filter: integer[], onsubmit: fun(winid: integer|nil), opts: table|nil)
 ---@field nvim_window_picker fun(win_filter: integer[], onsubmit: fun(winid: integer|nil), opts: table|nil)
+---@field snacks fun(win_filter: integer[], onsubmit: fun(winid: integer|nil), opts: table|nil)
 local M = {}
 
 setmetatable(M, {

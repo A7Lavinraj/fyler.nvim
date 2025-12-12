@@ -39,6 +39,7 @@
 --- - "none": Always opens in the last used window (default)
 --- - "builtin": Floating labels on windows. Options: `chars` (default: "asdfghjkl;")
 --- - "nvim-window-picker": Uses s1n7ax/nvim-window-picker. Options passed to `pick_window()`.
+--- - "snacks": Uses folke/snacks.nvim picker. Options passed to `snacks.picker.util.pick_win()`.
 --- - Custom function: `function(win_filter, onsubmit, opts)`
 ---   - `win_filter`: list of window IDs to exclude from selection (e.g. the fyler window)
 ---   - `onsubmit`: callback function, call with selected window ID or nil to cancel
@@ -73,6 +74,7 @@ local config = {}
 ---| "none"
 ---| "builtin"
 ---| "nvim-window-picker"
+---| "snacks"
 
 ---@alias FylerConfigIntegrationsWinpickFn fun(win_filter: integer[], onsubmit: fun(winid: integer|nil), opts: table)
 
