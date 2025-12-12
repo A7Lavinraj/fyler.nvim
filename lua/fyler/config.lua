@@ -393,9 +393,13 @@ function config.setup(opts)
     config.winpick_provider = winpick_provider
   end
 
-  require("fyler.autocmds").setup(config)
-  require("fyler.hooks").setup(config)
-  require("fyler.lib.hl").setup()
+  for _, sub_module in ipairs {
+    "fyler.autocmds",
+    "fyler.hooks",
+    "fyler.lib.hl",
+  } do
+    require(sub_module).setup(config)
+  end
 end
 
 return config

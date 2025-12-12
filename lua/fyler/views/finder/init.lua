@@ -15,6 +15,7 @@ local util = require "fyler.lib.util"
 ---@class Finder
 ---@field dir string
 ---@field files Files
+---@field private _gen integer
 local Finder = {}
 Finder.__index = Finder
 
@@ -30,6 +31,7 @@ function Finder.new(dir)
     dir = dir,
     files = files,
   }
+  instance._gen = 0
   instance.files.finder = instance
 
   setmetatable(instance, Finder)
@@ -186,36 +188,20 @@ function Finder:constrain_cursor()
   end
 end
 
----@param self Finder
----@param on_render function
-Finder.dispatch_refresh = util.debounce_wrap(10, function(self, on_render)
-  local files_to_table = async.wrap(function(callback)
-    self.files:update(nil, function(_, this)
-      callback(this:totable())
+---@param onrender function
+Finder.dispatch_refresh = util.debounce_wrap(10, function(self, onrender)
+  -- NOTE: Generation counter is important to cancel partial rendering for outdated data.
+  self._gen = self._gen + 1
+  local gen = self._gen
+
+  self.files:update(vim.schedule_wrap(function(_, this)
+    ui.files(this:totable(), function(c, is_partial)
+      -- Partial rendering belongs to current generation will be accepted.
+      if self._gen == gen then
+        self.win.ui:render(c, { partial = is_partial }, onrender)
+      end
     end)
-  end)
-
-  async.void(function()
-    -- Rendering file tree without additional info first
-    local files_table = files_to_table()
-
-    -- Have to schedule call due to fast event
-    vim.schedule(function()
-      self.win.ui:render(ui.files(files_table), function()
-        if on_render then
-          on_render()
-        end
-
-        -- TODO: I don't know why we need to reset syntax on entering fyler buffer with `:e`
-        util.set_buf_option(self.win.bufnr, "syntax", "fyler")
-
-        -- Rendering file tree with additional info
-        ui.files_with_info(files_table, function(files_with_info_table)
-          self.win.ui:render(files_with_info_table)
-        end)
-      end)
-    end)
-  end)
+  end))
 end)
 
 function Finder:cursor_node_entry()
