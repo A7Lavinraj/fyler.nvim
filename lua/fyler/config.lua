@@ -31,11 +31,12 @@
 ---
 --- >lua
 ---   integrations = {
----     winpick = "builtin",  -- or { provider = "builtin", opts = {} }
+---     winpick = "none",  -- or { provider = "none", opts = {} }
 ---   }
 --- <
 ---
 --- Providers:
+--- - "none": Always opens in the last used window (default)
 --- - "builtin": Floating labels on windows. Options: `chars` (default: "asdfghjkl;")
 --- - "nvim-window-picker": Uses s1n7ax/nvim-window-picker. Options passed to `pick_window()`.
 --- - Custom function: `function(win_filter, onsubmit, opts)`
@@ -69,6 +70,7 @@ local config = {}
 ---| "vim_nerdfont"
 
 ---@alias FylerConfigIntegrationsWinpickName
+---| "none"
 ---| "builtin"
 ---| "nvim-window-picker"
 
@@ -194,7 +196,7 @@ function config.defaults()
     integrations = {
       icon = "mini_icons",
       winpick = {
-        provider = "builtin",
+        provider = "none",
         opts = {},
       },
     },
