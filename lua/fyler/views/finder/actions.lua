@@ -9,10 +9,16 @@ function M.n_close()
   return fyler.close
 end
 
+---@class fyler.views.finder.actions.select_opts
+---@field winpick? boolean Whether to use winpick to select the file (default: true)
+
 -- NOTE: Dependency injection due to shared logic between select actions
 ---@param self Finder
 ---@param opener fun(path: string)
-local function _select(self, opener)
+---@param opts? fyler.views.finder.actions.select_opts
+local function _select(self, opener, opts)
+  opts = vim.tbl_extend("force", { winpick = true }, opts or {})
+
   local ref_id = parser.parse_ref_id(vim.api.nvim_get_current_line())
   if not ref_id then
     return
@@ -49,9 +55,11 @@ local function _select(self, opener)
   if should_close then
     self:exec_action "n_close"
     open_in_window(vim.api.nvim_get_current_win())
-  else
+  elseif opts.winpick then
     -- For split variants, we should pick windows
     config.winpick_provider({ self.win.winid }, open_in_window, config.winpick_opts)
+  else
+    opener(entry.path)
   end
 end
 
@@ -59,7 +67,7 @@ function M.n_select_tab(self)
   return function()
     _select(self, function(path)
       vim.cmd.tabedit { args = { path }, mods = { keepalt = false } }
-    end)
+    end, { winpick = false })
   end
 end
 
