@@ -90,7 +90,7 @@ local function setup_provider()
     end,
 
     on_win = function(_, winid, bufnr, topline, botline)
-      if not M.enabled or not M.win or not M.win:has_valid_bufnr() or M.win.winid ~= winid or M.win.bufnr ~= bufnr then
+      if not M.enabled or not M.win or not M.win:has_valid_winid() or M.win.winid ~= winid or M.win.bufnr ~= bufnr then
         return false
       end
 
@@ -102,7 +102,7 @@ local function setup_provider()
     end,
 
     on_line = function(_, winid, bufnr, row)
-      if not M.enabled or not M.win or not M.win:has_valid_bufnr() or M.win.winid ~= winid or M.win.bufnr ~= bufnr then
+      if not M.enabled or not M.win or not M.win:has_valid_winid() or M.win.winid ~= winid or M.win.bufnr ~= bufnr then
         return
       end
 

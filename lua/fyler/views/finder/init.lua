@@ -1,6 +1,7 @@
 local Files = require "fyler.views.finder.files"
 local Path = require "fyler.lib.path"
 local Spinner = require "fyler.lib.spinner"
+local Ui = require "fyler.lib.ui"
 local Win = require "fyler.lib.win"
 local async = require "fyler.lib.async"
 local config = require "fyler.config"
@@ -15,6 +16,12 @@ local util = require "fyler.lib.util"
 ---@class Finder
 ---@field dir string
 ---@field files Files
+---@field bufnr integer
+---@field bufname string
+---@field namespace integer
+---@field augroup integer
+---@field ui Ui
+---@field windows Win[]
 local Finder = {}
 Finder.__index = Finder
 
@@ -26,15 +33,142 @@ function Finder.new(dir)
     name = vim.fn.fnamemodify(dir, ":t"),
   }
 
+  local bufname = string.format("fyler://%s", dir)
+  local bufnr = vim.fn.bufnr(bufname)
+  if bufnr == -1 then
+    bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_name(bufnr, bufname)
+  end
+
   local instance = {
     dir = dir,
     files = files,
+    bufnr = bufnr,
+    bufname = bufname,
+    namespace = vim.api.nvim_create_namespace("fyler_finder_" .. bufnr),
+    augroup = vim.api.nvim_create_augroup("fyler_finder_" .. bufnr, { clear = true }),
+    windows = {},
   }
   instance.files.finder = instance
 
   setmetatable(instance, Finder)
 
+  -- Create Ui instance (needs a win-like interface for rendering)
+  instance.ui = Ui.new(instance)
+
+  -- Set up buffer options and autocmds (once per Finder)
+  instance:_setup_buffer()
+
   return instance
+end
+
+---@private
+function Finder:_setup_buffer()
+  local view = config.view("finder", config.values.views.finder.win.kind)
+
+  -- Buffer options
+  for option, value in pairs(view.win.buf_opts or {}) do
+    util.set_buf_option(self.bufnr, option, value)
+  end
+
+  -- Buffer-local mappings
+  local rev_maps = config.rev_maps "finder"
+  local user_maps = config.user_maps "finder"
+  local mappings_opts = view.mappings_opts or {}
+  mappings_opts.buffer = self.bufnr
+
+  local mappings = {
+    [rev_maps["CloseView"]] = self:_action "n_close",
+    [rev_maps["CollapseAll"]] = self:_action "n_collapse_all",
+    [rev_maps["CollapseNode"]] = self:_action "n_collapse_node",
+    [rev_maps["GotoCwd"]] = self:_action "n_goto_cwd",
+    [rev_maps["GotoNode"]] = self:_action "n_goto_node",
+    [rev_maps["GotoParent"]] = self:_action "n_goto_parent",
+    [rev_maps["Select"]] = self:_action "n_select",
+    [rev_maps["SelectSplit"]] = self:_action "n_select_split",
+    [rev_maps["SelectTab"]] = self:_action "n_select_tab",
+    [rev_maps["SelectVSplit"]] = self:_action "n_select_v_split",
+  }
+
+  for keys, callback in pairs(mappings) do
+    for _, k in ipairs(util.tbl_wrap(keys)) do
+      vim.keymap.set("n", k, callback, mappings_opts)
+    end
+  end
+
+  for k, fn in pairs(user_maps) do
+    vim.keymap.set("n", k, function()
+      fn(self)
+    end, mappings_opts)
+  end
+
+  -- Buffer autocmds
+  vim.api.nvim_create_autocmd("BufReadCmd", {
+    group = self.augroup,
+    buffer = self.bufnr,
+    callback = function()
+      self:dispatch_refresh()
+    end,
+  })
+  vim.api.nvim_create_autocmd("BufWriteCmd", {
+    group = self.augroup,
+    buffer = self.bufnr,
+    callback = function()
+      self:synchronize()
+    end,
+  })
+  vim.api.nvim_create_autocmd("CursorMoved", {
+    group = self.augroup,
+    buffer = self.bufnr,
+    callback = function()
+      self:constrain_cursor()
+    end,
+  })
+  vim.api.nvim_create_autocmd("CursorMovedI", {
+    group = self.augroup,
+    buffer = self.bufnr,
+    callback = function()
+      self:constrain_cursor()
+    end,
+  })
+
+  -- User autocmds
+  vim.api.nvim_create_autocmd("User", {
+    pattern = "DispatchRefresh",
+    group = self.augroup,
+    callback = function()
+      self:dispatch_refresh()
+    end,
+  })
+end
+
+--- Win-like interface for Ui rendering (Ui calls win:set_lines and win:set_extmark)
+function Finder:set_lines(start, finish, lines)
+  if not vim.api.nvim_buf_is_valid(self.bufnr) then
+    return
+  end
+
+  local was_modifiable = util.get_buf_option(self.bufnr, "modifiable")
+  local undolevels = util.get_buf_option(self.bufnr, "undolevels")
+
+  util.set_buf_option(self.bufnr, "modifiable", true)
+  util.set_buf_option(self.bufnr, "undolevels", -1)
+
+  vim.api.nvim_buf_clear_namespace(self.bufnr, self.namespace, 0, -1)
+  vim.api.nvim_buf_set_lines(self.bufnr, start, finish, false, lines)
+
+  if not was_modifiable then
+    util.set_buf_option(self.bufnr, "modifiable", false)
+  end
+
+  util.set_buf_option(self.bufnr, "modified", false)
+  util.set_buf_option(self.bufnr, "undolevels", undolevels)
+end
+
+function Finder:set_extmark(row, col, options)
+  if vim.api.nvim_buf_is_valid(self.bufnr) then
+    vim.api.nvim_buf_set_extmark(self.bufnr, self.namespace, row, col, options)
+  end
 end
 
 ---@param name string
@@ -44,97 +178,105 @@ function Finder:_action(name)
   return action(self)
 end
 
----@param user_mappings table<string, function>
----@return table<string, function>
-function Finder:_action_mod(user_mappings)
-  local actions = {}
-  for keys, fn in pairs(user_mappings) do
-    actions[keys] = function()
-      fn(self)
-    end
-  end
-
-  return actions
-end
-
----@param dir string
 ---@param kind WinKind
----@return boolean
-function Finder:same_as(dir, kind)
-  return self.dir == dir and self.win.kind == kind
-end
-
----@param kind WinKind
----@param bufname string
-function Finder:load_with(kind, bufname)
-  local rev_maps = config.rev_maps "finder"
-  local user_maps = config.user_maps "finder"
+---@return Win
+function Finder:add_window(kind)
   local view = config.view("finder", kind)
 
-  -- stylua: ignore start
-  self.win = Win.new {
-    autocmds      = {
-      ["BufReadCmd"]   = function() self:dispatch_refresh() end,
-      ["BufWriteCmd"]  = function() self:synchronize() end,
-      ["CursorMoved"]  = function() self:constrain_cursor() end,
-      ["CursorMovedI"] = function() self:constrain_cursor() end,
-    },
-    border        = view.win.border,
-    bufname       = bufname,
-    bottom        = view.win.bottom,
-    buf_opts      = view.win.buf_opts,
-    enter         = true,
-    footer        = view.win.footer,
-    footer_pos    = view.win.footer_pos,
-    height        = view.win.height,
-    kind          = kind,
-    left          = view.win.left,
-    mappings      = {
-      [rev_maps["CloseView"]]    = self:_action "n_close",
-      [rev_maps["CollapseAll"]]  = self:_action "n_collapse_all",
-      [rev_maps["CollapseNode"]] = self:_action "n_collapse_node",
-      [rev_maps["GotoCwd"]]      = self:_action "n_goto_cwd",
-      [rev_maps["GotoNode"]]     = self:_action "n_goto_node",
-      [rev_maps["GotoParent"]]   = self:_action "n_goto_parent",
-      [rev_maps["Select"]]       = self:_action "n_select",
-      [rev_maps["SelectSplit"]]  = self:_action "n_select_split",
-      [rev_maps["SelectTab"]]    = self:_action "n_select_tab",
-      [rev_maps["SelectVSplit"]] = self:_action "n_select_v_split",
-    },
-    mappings_opts = view.mappings_opts,
-    on_show       = function() indent.enable(self.win) end,
-    on_hide       = function() indent.disable() end,
-    render        = function()
-      self:dispatch_refresh(function()
-        local altbufnr = vim.fn.bufnr("#")
-        if config.values.views.finder.follow_current_file and altbufnr ~= -1 then
-          self:navigate(vim.api.nvim_buf_get_name(altbufnr))
-        end
-      end)
+  local win
+  win = Win.new {
+    bufnr = self.bufnr,
+    border = view.win.border,
+    bottom = view.win.bottom,
+    enter = true,
+    footer = view.win.footer,
+    footer_pos = view.win.footer_pos,
+    height = view.win.height,
+    kind = kind,
+    left = view.win.left,
+    on_show = function()
+      indent.enable(win)
     end,
-    right         = view.win.right,
-    title         = string.format(" %s ", self.dir),
-    title_pos     = view.win.title_pos,
-    top           = view.win.top,
-    user_autocmds = {
-      ["DispatchRefresh"] = function() self:dispatch_refresh() end,
-    },
-    user_mappings = self:_action_mod(user_maps),
-    width         = view.win.width,
-    win_opts      = view.win.win_opts,
+    on_hide = function()
+      indent.disable()
+    end,
+    right = view.win.right,
+    title = string.format(" %s ", self.dir),
+    title_pos = view.win.title_pos,
+    top = view.win.top,
+    width = view.win.width,
+    win_opts = view.win.win_opts,
   }
-  -- stylua: ignore end
 
-  return self
+  win:show()
+  table.insert(self.windows, win)
+
+  -- Render on first show
+  self:dispatch_refresh(function()
+    local altbufnr = vim.fn.bufnr "#"
+    if config.values.views.finder.follow_current_file and altbufnr ~= -1 then
+      self:navigate(vim.api.nvim_buf_get_name(altbufnr))
+    end
+  end)
+
+  return win
 end
 
+---@param win Win
+function Finder:remove_window(win)
+  -- Remove from list BEFORE hiding to prevent BufWinEnter recover() from finding it
+  for i, w in ipairs(self.windows) do
+    if w == win then
+      table.remove(self.windows, i)
+      break
+    end
+  end
+  win:hide()
+end
+
+---@param tabid integer|nil
+---@return Win|nil
+function Finder:window_for_tab(tabid)
+  tabid = tabid or vim.api.nvim_get_current_tabpage()
+  for _, win in ipairs(self.windows) do
+    if win:has_valid_winid() and vim.api.nvim_win_get_tabpage(win.winid) == tabid then
+      return win
+    end
+  end
+end
+
+---@return Win|nil
+function Finder:current_window()
+  local winid = vim.api.nvim_get_current_win()
+  for _, win in ipairs(self.windows) do
+    if win.winid == winid then
+      return win
+    end
+  end
+end
+
+--- Clean up invalid windows from list
+function Finder:cleanup_invalid_windows()
+  local valid = {}
+  for _, win in ipairs(self.windows) do
+    if win:has_valid_winid() then
+      table.insert(valid, win)
+    end
+  end
+  self.windows = valid
+end
+
+--- Legacy open method for compatibility
+---@param kind WinKind
 function Finder:open(kind)
-  self:load_with(kind, string.format("fyler://%s", self.dir)).win:show()
+  self:add_window(kind)
 end
 
+--- Close current window in this tab
 function Finder:close()
-  if self.win then
-    self.win:hide()
+  local win = self:window_for_tab()
+  if win then
+    self:remove_window(win)
   end
 end
 
@@ -142,26 +284,6 @@ function Finder:exec_action(name, ...)
   local action = require("fyler.views.finder.actions")[name]
   assert(action, string.format("action %s is not available", name))
   action(self)(...)
-end
-
----@param dir string
-function Finder:chdir(dir)
-  assert(dir, "cannot change directory with empty path")
-
-  self.files:_unregister_watcher(self.files.trie, true)
-  self.files = Files.new {
-    path = dir,
-    open = true,
-    type = "directory",
-    name = vim.fn.fnamemodify(dir, ":t"),
-  }
-
-  self.dir = dir
-  self.files.finder = self
-
-  if self.win then
-    self.win:update_title(string.format(" %s ", dir))
-  end
 end
 
 function Finder:constrain_cursor()
@@ -172,17 +294,18 @@ function Finder:constrain_cursor()
   end
 
   local _, ub = string.find(cur, ref_id)
-  if not self.win:has_valid_winid() then
+  local win = self:current_window()
+  if not win or not win:has_valid_winid() then
     return
   end
 
-  local row, col = self.win:get_cursor()
+  local row, col = win:get_cursor()
   if not (row and col) then
     return
   end
 
   if col <= ub then
-    self.win:set_cursor(row, ub + 1)
+    win:set_cursor(row, ub + 1)
   end
 end
 
@@ -201,17 +324,17 @@ Finder.dispatch_refresh = util.debounce_wrap(10, function(self, on_render)
 
     -- Have to schedule call due to fast event
     vim.schedule(function()
-      self.win.ui:render(ui.files(files_table), function()
+      self.ui:render(ui.files(files_table), function()
         if on_render then
           on_render()
         end
 
         -- TODO: I don't know why we need to reset syntax on entering fyler buffer with `:e`
-        util.set_buf_option(self.win.bufnr, "syntax", "fyler")
+        util.set_buf_option(self.bufnr, "syntax", "fyler")
 
         -- Rendering file tree with additional info
         ui.files_with_info(files_table, function(files_with_info_table)
-          self.win.ui:render(files_with_info_table)
+          self.ui:render(files_with_info_table)
         end)
       end)
     end)
@@ -233,13 +356,18 @@ function Finder:navigate(path)
     end
 
     self:dispatch_refresh(function()
-      if not (self.win:has_valid_winid() and self.win:has_valid_bufnr()) then
+      local win = self:current_window() or self:window_for_tab()
+      if not win or not win:has_valid_winid() then
         return
       end
 
-      for row, buf_line in ipairs(vim.api.nvim_buf_get_lines(self.win.bufnr, 0, -1, false)) do
+      if not vim.api.nvim_buf_is_valid(self.bufnr) then
+        return
+      end
+
+      for row, buf_line in ipairs(vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)) do
         if buf_line:find(ref_id) then
-          self.win:set_cursor(row, 0)
+          win:set_cursor(row, 0)
         end
       end
     end)
@@ -316,7 +444,7 @@ end))
 
 function Finder:synchronize()
   async.void(function()
-    local buf_lines = vim.api.nvim_buf_get_lines(self.win.bufnr, 0, -1, false)
+    local buf_lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
     local operations = self.files:diff_with_lines(buf_lines)
     local can_mutate = false
     if vim.tbl_isempty(operations) then
@@ -354,8 +482,7 @@ function Finder:synchronize()
 end
 
 local M = {
-  _current = nil, ---@type Finder|nil
-  _instance = {}, ---@type table<string, Finder>
+  _finders = {}, ---@type table<string, Finder>
 }
 
 ---@param dir string|nil
@@ -365,33 +492,57 @@ local function compute_opts(dir, kind)
   return Path.new(dir or fs.cwd()):normalize(), kind or config.values.views.finder.win.kind
 end
 
-function M.open(dir, kind)
-  dir, kind = compute_opts(dir, kind)
-
-  local current = M._current
-  if not current or not current:same_as(dir, kind) then
-    if current then
-      current:close()
+---@param tabid integer|nil
+---@return Finder|nil, Win|nil
+function M.finder_for_tab(tabid)
+  tabid = tabid or vim.api.nvim_get_current_tabpage()
+  for _, finder in pairs(M._finders) do
+    for _, win in ipairs(finder.windows) do
+      if win:has_valid_winid() and vim.api.nvim_win_get_tabpage(win.winid) == tabid then
+        return finder, win
+      end
     end
-
-    current = M._instance[dir] or Finder.new(dir)
-    current:open(kind)
-
-    M._instance[dir] = current
-    M._current = current
   end
 end
 
+---@param dir string
+---@return Finder
+function M.get_or_create_finder(dir)
+  if not M._finders[dir] then
+    M._finders[dir] = Finder.new(dir)
+  end
+  return M._finders[dir]
+end
+
+function M.open(dir, kind)
+  dir, kind = compute_opts(dir, kind)
+  local finder, win = M.finder_for_tab()
+
+  if finder and win then
+    -- Already open in this tab
+    if finder.dir == dir then
+      win:focus()
+      return
+    else
+      -- Different dir requested, close current and open new
+      finder:remove_window(win)
+    end
+  end
+
+  local target_finder = M.get_or_create_finder(dir)
+  target_finder:add_window(kind)
+end
+
 function M.close()
-  local current = M._current
-  if current then
-    current:close()
-    M._current = nil
+  local finder, win = M.finder_for_tab()
+  if finder and win then
+    finder:remove_window(win)
   end
 end
 
 function M.toggle(dir, kind)
-  if M._current then
+  local finder, win = M.finder_for_tab()
+  if finder and win then
     M.close()
   else
     M.open(dir, kind)
@@ -399,9 +550,9 @@ function M.toggle(dir, kind)
 end
 
 function M.focus()
-  local current = M._current
-  if current then
-    current.win:focus()
+  local finder, win = M.finder_for_tab()
+  if finder and win then
+    win:focus()
   else
     M.open()
   end
@@ -409,44 +560,51 @@ end
 
 ---@param path string|nil
 function M.navigate(path)
-  local current = M._current
-  if not path or not current or parser.is_protocol_path(path) then
+  local finder, _ = M.finder_for_tab()
+  if not path or not finder or parser.is_protocol_path(path) then
     return
   end
 
-  current:navigate(Path.new(path):normalize())
+  finder:navigate(Path.new(path):normalize())
 end
 
 function M.recover()
-  local current = M._current
-  if not current then
+  local finder, win = M.finder_for_tab()
+  if not finder or not win then
     return
   end
 
-  if current.win:has_valid_winid() and current.win:has_valid_bufnr() and current.win:winbuf() == current.win.bufnr then
-    return
+  -- Check if the window is still showing the fyler buffer
+  if win:has_valid_winid() then
+    local win_buf = vim.api.nvim_win_get_buf(win.winid)
+    if win_buf == finder.bufnr then
+      return -- Still valid, nothing to recover
+    end
   end
 
-  current.win:recover()
-  M._current = nil
+  -- Window is showing different buffer or invalid, remove it
+  win:recover()
+  finder:remove_window(win)
 end
 
 function M.load(url)
   local dir0 = (url:gsub(vim.pesc "fyler://", ""))
   local dir, kind = compute_opts(dir0)
 
-  local current = M._current
-  if not current or not current:same_as(dir, kind) then
-    if current then
-      current:close()
+  local finder, win = M.finder_for_tab()
+
+  if finder and win then
+    if finder.dir == dir then
+      -- Already showing this directory
+      return
+    else
+      -- Close current, open new
+      finder:remove_window(win)
     end
-
-    current = M._instance[dir] or Finder.new(dir)
-    current:load_with(kind, url).win:show()
-
-    M._instance[dir] = current
-    M._current = current
   end
+
+  local target_finder = M.get_or_create_finder(dir)
+  target_finder:add_window(kind)
 end
 
 return M

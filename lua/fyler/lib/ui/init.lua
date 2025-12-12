@@ -2,7 +2,7 @@ local Component = require "fyler.lib.ui.component"
 local Renderer = require "fyler.lib.ui.renderer"
 
 ---@class Ui
----@field win Win
+---@field win Win|Finder  -- Any object with set_lines and set_extmark methods
 ---@field renderer UiRenderer
 local Ui = {}
 Ui.__index = Ui

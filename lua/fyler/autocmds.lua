@@ -72,6 +72,18 @@ function M.setup(config)
       require("fyler.views.finder").load(arg.file)
     end,
   })
+
+  -- Cleanup invalid windows when tabs are closed
+  vim.api.nvim_create_autocmd("TabClosed", {
+    group = augroup,
+    desc = "Clean up invalid fyler windows when tabs close",
+    callback = function()
+      local finder_module = require "fyler.views.finder"
+      for _, finder in pairs(finder_module._finders) do
+        finder:cleanup_invalid_windows()
+      end
+    end,
+  })
 end
 
 return M

@@ -39,6 +39,11 @@ local function _select(self, opener, opts)
     return
   end
 
+  local win = self:current_window()
+  if not win then
+    return
+  end
+
   local function open_in_window(winid)
     if not winid then
       return
@@ -48,8 +53,8 @@ local function _select(self, opener, opts)
   end
 
   -- Close if kind=replace|float or config.values.views.finder.close_on_select is enabled
-  local should_close = self.win.kind:match "^replace"
-    or self.win.kind:match "^float"
+  local should_close = win.kind:match "^replace"
+    or win.kind:match "^float"
     or config.values.views.finder.close_on_select
 
   if should_close then
@@ -57,7 +62,7 @@ local function _select(self, opener, opts)
     open_in_window(vim.api.nvim_get_current_win())
   elseif opts.winpick then
     -- For split variants, we should pick windows
-    config.winpick_provider({ self.win.winid }, open_in_window, config.winpick_opts)
+    config.winpick_provider({ win.winid }, open_in_window, config.winpick_opts)
   else
     opener(entry.path)
   end
@@ -111,8 +116,12 @@ function M.n_goto_parent(self)
       return
     end
 
-    self:chdir(parent_dir)
-    self:dispatch_refresh()
+    local win = self:current_window()
+    local kind = win and win.kind or nil
+
+    -- Open parent directory (this will close current window and open new Finder)
+    local finder_module = require "fyler.views.finder"
+    finder_module.open(parent_dir, kind)
   end
 end
 
@@ -123,8 +132,12 @@ function M.n_goto_cwd(self)
       return
     end
 
-    self:chdir(fs.cwd())
-    self:dispatch_refresh()
+    local win = self:current_window()
+    local kind = win and win.kind or nil
+
+    -- Open cwd (this will close current window and open new Finder)
+    local finder_module = require "fyler.views.finder"
+    finder_module.open(fs.cwd(), kind)
   end
 end
 
@@ -142,8 +155,12 @@ function M.n_goto_node(self)
     end
 
     if entry:is_directory() then
-      self:chdir(entry.path)
-      self:dispatch_refresh()
+      local win = self:current_window()
+      local kind = win and win.kind or nil
+
+      -- Open directory (this will close current window and open new Finder)
+      local finder_module = require "fyler.views.finder"
+      finder_module.open(entry.path, kind)
     else
       M.n_select(self)()
     end
@@ -184,16 +201,17 @@ function M.n_collapse_node(self)
     end
 
     self:dispatch_refresh(function()
-      if not self.win:has_valid_winid() then
+      local win = self:current_window() or self:window_for_tab()
+      if not win or not win:has_valid_winid() then
         return
       end
 
       local marker = string.format("/%05d", focus_ref_id)
-      local lines = vim.api.nvim_buf_get_lines(self.win.bufnr, 0, -1, false)
+      local lines = vim.api.nvim_buf_get_lines(self.bufnr, 0, -1, false)
 
       for ln, line in ipairs(lines) do
         if line:find(marker, 1, true) then
-          vim.api.nvim_win_set_cursor(self.win.winid, { ln, 0 })
+          vim.api.nvim_win_set_cursor(win.winid, { ln, 0 })
           break
         end
       end

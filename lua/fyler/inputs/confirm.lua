@@ -16,12 +16,18 @@ end
 ---@param options table
 function Confirm:open(options, message, onsubmit)
   local width, height, left, top = resolve_dim(options.width, options.height)
+
+  self.bufnr = vim.api.nvim_create_buf(false, true)
+  self.namespace = vim.api.nvim_create_namespace("fyler_confirm_" .. self.bufnr)
+  self.ui = Ui.new(self)
+
   -- stylua: ignore start
   self.window = Win.new {
+    bufnr      = self.bufnr,
     autocmds   = {
       QuitPre = function()
         local cmd = util.cmd_history()
-        self.window:hide()
+        self:hide()
 
         onsubmit()
         if cmd == "qa" or cmd == "qall" or cmd == "quitall" then
@@ -34,34 +40,12 @@ function Confirm:open(options, message, onsubmit)
       end
     },
     border     = vim.o.winborder == "" and "rounded" or vim.o.winborder,
-    buf_opts   = {
-      modifiable = false
-    },
     enter      = true,
     footer     = " Want to continue? (y|n) ",
     footer_pos = "center",
     height     = height,
     kind       = "float",
     left       = left,
-    mappings   = {
-      [{ 'y','o', '<Enter>' }] = function()
-        self.window:hide()
-        onsubmit(true)
-      end,
-
-      [{ 'n', 'c', '<ESC>' }] = function()
-        self.window:hide()
-        onsubmit(false)
-      end
-    },
-    render     = function()
-      if type(message) == "table" and type(message[1]) == "string" then
-        ---@diagnostic disable-next-line: param-type-mismatch
-        self.window.ui:render(Ui.Column(util.tbl_map(message, Ui.Text)))
-      else
-        self.window.ui:render(message)
-      end
-    end,
     top        = top,
     width      = width,
     win_opts   = {
@@ -71,6 +55,57 @@ function Confirm:open(options, message, onsubmit)
   -- stylua: ignore end
 
   self.window:show()
+
+  util.set_buf_option(self.bufnr, "modifiable", false)
+
+  local mappings_opts = { buffer = self.bufnr }
+  for _, k in ipairs { "y", "o", "<Enter>" } do
+    vim.keymap.set("n", k, function()
+      self:hide()
+      onsubmit(true)
+    end, mappings_opts)
+  end
+  for _, k in ipairs { "n", "c", "<ESC>" } do
+    vim.keymap.set("n", k, function()
+      self:hide()
+      onsubmit(false)
+    end, mappings_opts)
+  end
+
+  if type(message) == "table" and type(message[1]) == "string" then
+    ---@diagnostic disable-next-line: param-type-mismatch
+    self.ui:render(Ui.Column(util.tbl_map(message, Ui.Text)))
+  else
+    self.ui:render(message)
+  end
+end
+
+function Confirm:set_lines(start, finish, lines)
+  if not vim.api.nvim_buf_is_valid(self.bufnr) then
+    return
+  end
+
+  local was_modifiable = util.get_buf_option(self.bufnr, "modifiable")
+  util.set_buf_option(self.bufnr, "modifiable", true)
+
+  vim.api.nvim_buf_clear_namespace(self.bufnr, self.namespace, 0, -1)
+  vim.api.nvim_buf_set_lines(self.bufnr, start, finish, false, lines)
+
+  if not was_modifiable then
+    util.set_buf_option(self.bufnr, "modifiable", false)
+  end
+end
+
+function Confirm:set_extmark(row, col, options)
+  if vim.api.nvim_buf_is_valid(self.bufnr) then
+    vim.api.nvim_buf_set_extmark(self.bufnr, self.namespace, row, col, options)
+  end
+end
+
+function Confirm:hide()
+  self.window:hide()
+  -- Delete the buffer since this is a one-time dialog
+  util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
 end
 
 local M = {}

@@ -17,28 +17,21 @@ local util = require "fyler.lib.util"
 ---@field autocmds table
 ---@field border string|string[]
 ---@field bottom integer|string|nil
----@field buf_opts table
----@field bufname string
----@field bufnr integer|nil
+---@field bufnr integer
 ---@field enter boolean
 ---@field footer string|string[]|nil
 ---@field footer_pos string|nil
 ---@field height string
 ---@field kind WinKind
 ---@field left integer|string|nil
----@field mappings table
----@field mappings_opts vim.keymap.set.Opts
 ---@field namespace integer
 ---@field on_hide function|nil
 ---@field on_show function|nil
----@field render function|nil
 ---@field right integer|string|nil
 ---@field title string|string[]|nil
 ---@field title_pos string|nil
 ---@field top integer|string|nil
----@field ui Ui
 ---@field user_autocmds table
----@field user_mappings table
 ---@field width integer|string
 ---@field win integer|nil
 ---@field win_opts table
@@ -51,7 +44,6 @@ function Win.new(opts)
   opts = opts or {}
 
   local instance = util.tbl_merge_keep(opts, { kind = "float" })
-  instance.ui = require("fyler.lib.ui").new(instance)
   setmetatable(instance, Win)
 
   return instance
@@ -63,20 +55,8 @@ function Win:has_valid_winid()
 end
 
 ---@return boolean
-function Win:has_valid_bufnr()
-  return type(self.bufnr) == "number" and vim.api.nvim_buf_is_valid(self.bufnr)
-end
-
----@return boolean
 function Win:is_visible()
-  return self:has_valid_winid() and self:has_valid_bufnr()
-end
-
----@return integer|nil
-function Win:winbuf()
-  if self:has_valid_winid() then
-    return vim.api.nvim_win_get_buf(self.winid)
-  end
+  return self:has_valid_winid()
 end
 
 ---@return integer|nil, integer|nil
@@ -89,7 +69,7 @@ function Win:get_cursor()
 end
 
 function Win:set_local_buf_option(k, v)
-  if self:has_valid_bufnr() then
+  if vim.api.nvim_buf_is_valid(self.bufnr) then
     util.set_buf_option(self.bufnr, k, v)
   end
 end
@@ -101,7 +81,7 @@ function Win:set_local_win_option(k, v)
 end
 
 function Win:get_local_buf_option(k)
-  if self:has_valid_bufnr() then
+  if vim.api.nvim_buf_is_valid(self.bufnr) then
     return util.get_buf_option(self.bufnr, k)
   end
 end
@@ -120,47 +100,10 @@ function Win:set_cursor(row, col)
   end
 end
 
----@param start integer
----@param finish integer
----@param lines string[]
-function Win:set_lines(start, finish, lines)
-  if not self:has_valid_bufnr() then
-    return
-  end
-
-  local was_modifiable = util.get_buf_option(self.bufnr, "modifiable")
-  local undolevels = util.get_buf_option(self.bufnr, "undolevels")
-
-  self:set_local_buf_option("modifiable", true)
-  self:set_local_buf_option("undolevels", -1)
-
-  vim.api.nvim_buf_clear_namespace(self.bufnr, self.namespace, 0, -1)
-  vim.api.nvim_buf_set_lines(self.bufnr, start, finish, false, lines)
-
-  if not was_modifiable then
-    self:set_local_buf_option("modifiable", false)
-  end
-
-  self:set_local_buf_option("modified", false)
-  self:set_local_buf_option("undolevels", undolevels)
-end
-
----@param row integer
----@param col integer
----@param options vim.api.keyset.set_extmark
-function Win:set_extmark(row, col, options)
-  if self:has_valid_bufnr() then
-    vim.api.nvim_buf_set_extmark(self.bufnr, self.namespace, row, col, options)
-  end
-end
-
 function Win:focus()
-  local windows = vim.fn.win_findbuf(self.bufnr)
-  if not windows or not windows[1] then
-    return
+  if self:has_valid_winid() then
+    vim.api.nvim_set_current_win(self.winid)
   end
-
-  vim.api.nvim_set_current_win(windows[1])
 end
 
 function Win:update_config(config)
@@ -281,20 +224,9 @@ function Win:show()
     return
   end
 
-  if self.bufname then
-    self.bufnr = vim.fn.bufnr(self.bufname)
-    if self.bufnr == -1 then
-      self.bufnr = vim.api.nvim_create_buf(false, true)
-    end
-    if vim.api.nvim_buf_get_name(self.bufnr) ~= self.bufname then
-      vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
-    end
-  else
-    self.bufnr = vim.api.nvim_create_buf(false, true)
-  end
-
   local win_config = self:config()
-  local current_bufnr = vim.api.nvim_get_current_buf()
+  local current_win = vim.api.nvim_get_current_win()
+
   if win_config.split and (win_config.split:match "_all$" or win_config.split:match "_most$") then
     if win_config.split == "left_most" then
       vim.api.nvim_command(string.format("topleft %dvsplit", win_config.width))
@@ -310,7 +242,7 @@ function Win:show()
 
     self.winid = vim.api.nvim_get_current_win()
     if not self.enter then
-      vim.api.nvim_set_current_win(current_bufnr)
+      vim.api.nvim_set_current_win(current_win)
     end
 
     vim.api.nvim_win_set_buf(self.winid, self.bufnr)
@@ -325,27 +257,11 @@ function Win:show()
     self.on_show()
   end
 
-  self.augroup = vim.api.nvim_create_augroup("fyler_augroup_win_" .. self.bufnr, { clear = true })
-  self.namespace = vim.api.nvim_create_namespace("fyler_namespace_win_" .. self.bufnr)
-  local mappings_opts = self.mappings_opts or {}
-  mappings_opts.buffer = self.bufnr
-
-  for keys, v in pairs(self.mappings or {}) do
-    for _, k in ipairs(util.tbl_wrap(keys)) do
-      vim.keymap.set("n", k, v, mappings_opts)
-    end
-  end
-
-  for k, v in pairs(self.user_mappings or {}) do
-    vim.keymap.set("n", k, v, mappings_opts)
-  end
+  self.augroup = vim.api.nvim_create_augroup("fyler_augroup_win_" .. self.winid, { clear = true })
+  self.namespace = vim.api.nvim_create_namespace("fyler_namespace_win_" .. self.winid)
 
   for option, value in pairs(self.win_opts or {}) do
     util.set_win_option(self.winid, option, value)
-  end
-
-  for option, value in pairs(self.buf_opts or {}) do
-    util.set_buf_option(self.bufnr, option, value)
   end
 
   for event, callback in pairs(self.autocmds or {}) do
@@ -354,10 +270,6 @@ function Win:show()
 
   for event, callback in pairs(self.user_autocmds or {}) do
     vim.api.nvim_create_autocmd("User", { pattern = event, group = self.augroup, callback = callback })
-  end
-
-  if self.render then
-    self.render()
   end
 end
 
@@ -371,11 +283,8 @@ function Win:hide()
     else
       util.try(vim.api.nvim_win_set_buf, self.winid, altbufnr)
     end
-
-    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
   else
-    util.try(vim.api.nvim_win_close, true)
-    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
+    util.try(vim.api.nvim_win_close, self.winid, true)
   end
 
   if self.on_hide then
@@ -387,12 +296,9 @@ end
 function Win:recover()
   vim.api.nvim_clear_autocmds { group = self.augroup }
 
-  if self.kind:match "^replace" or self.kind:match "^split" then
-    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
-  else
+  if not (self.kind:match "^replace" or self.kind:match "^split") then
     local current_bufnr = vim.api.nvim_get_current_buf()
     util.try(vim.api.nvim_win_close, self.winid, true)
-    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
     vim.api.nvim_win_set_buf(vim.api.nvim_get_current_win(), current_bufnr)
   end
 
