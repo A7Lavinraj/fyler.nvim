@@ -217,34 +217,34 @@ function Files:add_child(parent_ref_id, opts)
   end
 end
 
----@param ref_id integer|nil
----@param callback function
-function Files:update(ref_id, callback)
-  if type(ref_id) == "function" then
-    callback = ref_id
-    ref_id = nil
+---@param ... integer|function
+function Files:update(...)
+  local ref_id = nil
+  local onupdate = nil
+
+  for i = 1, select("#", ...) do
+    local arg = select(i, ...)
+
+    if type(arg) == "number" then
+      ref_id = arg
+    elseif type(arg) == "function" then
+      onupdate = arg
+    end
   end
 
-  if ref_id then
-    local node = self:find_node_by_ref_id(ref_id)
-    if node then
-      self:_update(node, function(err)
-        if err then
-          return callback(err)
-        end
-        callback(nil, self)
-      end)
-    else
-      callback(nil, self)
-    end
-  else
-    self:_update(self.trie, function(err)
-      if err then
-        return callback(err)
-      end
-      callback(nil, self)
-    end)
+  if not onupdate then
+    error "callback function is required"
   end
+
+  local node = ref_id and self:find_node_by_ref_id(ref_id) or self.trie
+
+  self:_update(node, function(err)
+    if err then
+      return onupdate(err)
+    end
+
+    onupdate(nil, self)
+  end)
 end
 
 ---@param node Trie
