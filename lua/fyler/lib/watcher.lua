@@ -18,10 +18,8 @@ function M.register(path, callback)
     return
   end
 
-  local wrapped_callback = util.debounce_wrap(200, callback)
-
   M._instances[_path:normalize()] = assert(vim.uv.new_fs_event())
-  M._instances[_path:normalize()]:start(_path:normalize(), {}, wrapped_callback)
+  M._instances[_path:normalize()]:start(_path:normalize(), {}, util.debounce_wrap(20, callback))
 end
 
 ---@param path string

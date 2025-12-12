@@ -48,28 +48,21 @@ function M.setup(config)
     vim.api.nvim_create_autocmd("BufEnter", {
       group = augroup,
       desc = "Track current focused buffer in finder",
-      -- Scheduling to let Finder.files update completely
-      callback = vim.schedule_wrap(function(arg)
-        fyler.navigate(arg.file)
-      end),
+      callback = function(arg)
+        if not (require("fyler.lib.util").is_protocol_uri(arg.file) or arg.file == "") then
+          fyler.navigate(arg.file)
+        end
+      end,
     })
   end
-
-  vim.api.nvim_create_autocmd("BufWinEnter", {
-    group = augroup,
-    desc = "Drop finder window when buffer inside it changes to NON FYLER BUFFER",
-    callback = function()
-      require("fyler.views.finder").recover()
-    end,
-  })
 
   vim.api.nvim_create_autocmd({ "BufReadCmd", "SessionLoadPost" }, {
     group = augroup,
     pattern = "fyler://*",
-    desc = "Load on fyler://",
+    desc = "Load with URI",
     nested = true,
     callback = function(arg)
-      require("fyler.views.finder").load(arg.file)
+      fyler.open { dir = arg.file }
     end,
   })
 end

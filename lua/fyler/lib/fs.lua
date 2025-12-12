@@ -55,8 +55,8 @@ function commands.ls(path, callback)
     end
 
     local contents = {}
-
-    local function read_all_entries()
+    -- NOTE: Polling is necessary because `fs_readdir: async_version` list contents in chunks
+    local function poll_entries()
       vim.uv.fs_readdir(dir, function(err_read, entries)
         if err_read then
           vim.uv.fs_closedir(dir, function()
@@ -72,22 +72,14 @@ function commands.ls(path, callback)
               local f = _path:join(e.name)
               local p, t = f:res_link()
               if e.type == "link" then
-                return {
-                  name = e.name,
-                  path = p,
-                  type = t or "file",
-                  link = f:normalize(),
-                }
+                return { name = e.name, path = p, type = t or "file", link = f:normalize() }
               else
-                return {
-                  name = e.name,
-                  path = f:normalize(),
-                  type = e.type,
-                }
+                return { name = e.name, path = f:normalize(), type = e.type }
               end
             end)
           )
-          read_all_entries() -- Continue reading
+
+          poll_entries() -- Continue reading
         else
           vim.uv.fs_closedir(dir, function()
             callback(nil, contents)
@@ -96,7 +88,7 @@ function commands.ls(path, callback)
       end)
     end
 
-    read_all_entries()
+    poll_entries()
   end, 1000)
 end
 

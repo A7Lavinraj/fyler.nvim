@@ -67,17 +67,16 @@ function M.setup(opts)
 
   did_setup = true
 
-  local util = require "fyler.lib.util"
   local finder = require "fyler.views.finder"
-
-  -- Fyler.API: Closes current finder view
-  M.close = finder.close
 
   -- Fyler.API: Opens finder view with provided options
   M.open = vim.schedule_wrap(function(args)
     args = args or {}
     finder.open(args.dir, args.kind)
   end)
+
+  -- Fyler.API: Closes current finder view
+  M.close = finder.close
 
   -- Fyler.API: Toggles finder view with provided options
   M.toggle = function(args)
@@ -86,15 +85,10 @@ function M.setup(opts)
   end
 
   -- Fyler.API: Focus finder view
-  M.focus = function()
-    finder.focus()
-  end
+  M.focus = finder.focus
 
   -- Fyler.API: Focuses given file path or alternate buffer
-  ---@param path string
-  M.navigate = util.debounce_wrap(10, function(path)
-    finder.navigate(path)
-  end)
+  M.navigate = finder.navigate
 end
 
 return M

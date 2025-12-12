@@ -144,14 +144,16 @@ end
 
 T["mappings"]["GotoCwd"] = function(kind)
   -- NOTE: For some reason if doing cd first then fyler will not open
-  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], vim.fs.joinpath(dir_data, "test-dir"), kind))
-  child.cmd(string.format([[ cd %s ]], dir_data))
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(50)
 
   child.dbg_screen()
-  child.type_keys "="
+  child.type_keys "."
+  vim.uv.sleep(50)
 
+  child.dbg_screen()
+  child.type_keys "="
   vim.uv.sleep(50)
 
   child.dbg_screen()
@@ -256,6 +258,8 @@ T["synchronize"]["basic operations"] = function(kind)
 
   child.set_lines(0, 0, -1, false, lines)
   child.cmd [[ write ]]
+  vim.uv.sleep(50)
+
   child.dbg_screen()
 
   local lines = child.get_lines(0, 0, -1, false)
