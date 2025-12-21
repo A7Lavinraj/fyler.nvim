@@ -672,4 +672,54 @@ T["synchronize"]["no changes when not saved"] = function(kind)
   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-file")), 0)
 end
 
+T["indentscope"] = MiniTest.new_set {}
+
+T["indentscope"]["shows in multiple windows on separate tabs"] = function()
+  local function is_registered(winid)
+    return child.lua_get(
+      [[ (function(target_winid)
+      local indent = require("fyler.views.finder.indent")
+      for win, _ in pairs(indent.wins) do
+        if win.winid == target_winid then return true end
+      end
+      return false
+    end)(...) ]],
+      { winid }
+    )
+  end
+
+  child.cmd(string.format([[ Fyler dir=%s ]], dir_data))
+  vim.uv.sleep(50)
+
+  child.type_keys "<Enter>"
+  vim.uv.sleep(50)
+
+  local win1 = child.api.nvim_get_current_win()
+  eq(is_registered(win1), true)
+
+  child.cmd "tabnew"
+  child.cmd(string.format([[ Fyler dir=%s ]], dir_data))
+  vim.uv.sleep(50)
+
+  local win2 = child.api.nvim_get_current_win()
+  eq(is_registered(win2), true)
+
+  child.cmd "tabprevious"
+  vim.uv.sleep(50)
+
+  local current_win = child.api.nvim_get_current_win()
+  eq(current_win, win1)
+
+  eq(is_registered(win1), true)
+  eq(is_registered(win2), true)
+
+  child.cmd "tabnext"
+  child.cmd "close"
+  vim.uv.sleep(50)
+
+  eq(is_registered(win2), false)
+
+  eq(is_registered(win1), true)
+end
+
 return T

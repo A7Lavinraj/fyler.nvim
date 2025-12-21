@@ -1,6 +1,8 @@
 local config = require "fyler.config"
 
-local M = {}
+local M = {
+  wins = {},
+}
 
 local INDENT_WIDTH = 2
 local snapshot = {}
@@ -38,7 +40,11 @@ end
 ---@param lnum integer
 ---@return integer indent
 local function compute_indent(bufnr, lnum)
-  local cached = snapshot[lnum]
+  if not snapshot[bufnr] then
+    snapshot[bufnr] = {}
+  end
+
+  local cached = snapshot[bufnr][lnum]
   if cached then
     return cached
   end
@@ -56,7 +62,7 @@ local function compute_indent(bufnr, lnum)
     indent = 0
     local prev_lnum = lnum - 1
     while prev_lnum >= 1 do
-      local prev_indent = snapshot[prev_lnum] or compute_indent(bufnr, prev_lnum)
+      local prev_indent = snapshot[bufnr][prev_lnum] or compute_indent(bufnr, prev_lnum)
       if prev_indent > 0 then
         indent = prev_indent
         break
@@ -67,7 +73,7 @@ local function compute_indent(bufnr, lnum)
     indent = calculate_indent(line)
   end
 
-  snapshot[lnum] = indent
+  snapshot[bufnr][lnum] = indent
 
   return indent
 end
@@ -90,7 +96,19 @@ local function setup_provider()
     end,
 
     on_win = function(_, winid, bufnr, topline, botline)
-      if not M.enabled or not M.win or not M.win:has_valid_winid() or M.win.winid ~= winid or M.win.bufnr ~= bufnr then
+      if not M.enabled then
+        return false
+      end
+
+      local found_win
+      for win, _ in pairs(M.wins) do
+        if win:has_valid_winid() and win.winid == winid and win.bufnr == bufnr then
+          found_win = win
+          break
+        end
+      end
+
+      if not found_win then
         return false
       end
 
@@ -101,13 +119,13 @@ local function setup_provider()
       return true
     end,
 
-    on_line = function(_, winid, bufnr, row)
-      if not M.enabled or not M.win or not M.win:has_valid_winid() or M.win.winid ~= winid or M.win.bufnr ~= bufnr then
+    on_line = function(_, _, bufnr, row)
+      if not M.enabled then
         return
       end
 
       local lnum = row + 1
-      local indent = snapshot[lnum]
+      local indent = snapshot[bufnr] and snapshot[bufnr][lnum]
 
       if indent and indent >= INDENT_WIDTH then
         for col = 0, indent - INDENT_WIDTH, INDENT_WIDTH do
@@ -134,15 +152,23 @@ function M.enable(win)
 
   setup_provider()
 
-  M.win = win
+  M.wins[win] = true
   M.enabled = true
 end
 
-function M.disable()
-  M.win = nil
-  M.enabled = false
-
-  snapshot = {}
+---@param win Win|nil
+function M.disable(win)
+  if win then
+    M.wins[win] = nil
+    if vim.tbl_isempty(M.wins) then
+      M.enabled = false
+      snapshot = {}
+    end
+  else
+    M.wins = {}
+    M.enabled = false
+    snapshot = {}
+  end
 end
 
 return M

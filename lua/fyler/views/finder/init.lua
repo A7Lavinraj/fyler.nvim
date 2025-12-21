@@ -198,7 +198,7 @@ function Finder:add_window(kind)
       indent.enable(win)
     end,
     on_hide = function()
-      indent.disable()
+      indent.disable(win)
     end,
     right = view.win.right,
     title = string.format(" %s ", self.dir),
@@ -261,6 +261,8 @@ function Finder:cleanup_invalid_windows()
   for _, win in ipairs(self.windows) do
     if win:has_valid_winid() then
       table.insert(valid, win)
+    else
+      win:hide()
     end
   end
   self.windows = valid
