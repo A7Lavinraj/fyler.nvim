@@ -329,6 +329,8 @@ function Win:show()
       if self.bufname then
         vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
       end
+    else
+      vim.api.nvim_win_set_buf(self.winid, self.bufnr)
     end
   else
     if self.bufname then
@@ -352,9 +354,9 @@ function Win:show()
 
   self.augroup = vim.api.nvim_create_augroup("fyler_augroup_win_" .. self.bufnr, { clear = true })
   self.namespace = vim.api.nvim_create_namespace("fyler_namespace_win_" .. self.bufnr)
+
   local mappings_opts = self.mappings_opts or {}
   mappings_opts.buffer = self.bufnr
-
   for keys, v in pairs(self.mappings or {}) do
     for _, k in ipairs(util.tbl_wrap(keys)) do
       vim.keymap.set("n", k, v, mappings_opts)
@@ -381,6 +383,14 @@ function Win:show()
     vim.api.nvim_create_autocmd("User", { pattern = event, group = self.augroup, callback = callback })
   end
 
+  vim.api.nvim_buf_attach(self.bufnr, false, {
+    on_detach = function()
+      if self.autocmds or self.user_autocmds then
+        pcall(vim.api.nvim_del_augroup_by_id, self.augroup)
+      end
+    end,
+  })
+
   if self.render then
     self.render()
   end
@@ -397,6 +407,8 @@ function Win:hide()
   else
     util.try(vim.api.nvim_win_close, self.winid, true)
   end
+
+  util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
 
   if self.on_hide then
     self.on_hide()
