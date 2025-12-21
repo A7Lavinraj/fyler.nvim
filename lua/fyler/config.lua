@@ -56,9 +56,16 @@
 ---   }
 --- <
 
+local deprecated = require "fyler.deprecated"
 local util = require "fyler.lib.util"
 
 local config = {}
+
+local DEPRECATION_RULES = {
+  deprecated.rename("views.finder.git", "views.finder.columns.git", {
+    message = "Configuration structure reorganized under 'views.finder.columns'",
+  }),
+}
 
 ---@class FylerConfigGitStatus
 ---@field enabled boolean
@@ -377,7 +384,7 @@ end
 function config.setup(opts)
   opts = opts or {}
 
-  config.values = util.tbl_merge_force(config.defaults(), opts)
+  config.values = util.tbl_merge_force(config.defaults(), deprecated.migrate(opts, DEPRECATION_RULES))
 
   local icon_provider = config.values.integrations.icon
   if type(icon_provider) == "string" then
