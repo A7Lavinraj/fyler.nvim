@@ -44,11 +44,13 @@ end
 ---@param path string
 ---@return string[]|nil
 function Files:path_to_segments(path)
-  if not vim.startswith(path, self.root_path) then
+  local normalized = Path.new(path):normalize()
+
+  if not vim.startswith(normalized, self.root_path) then
     return nil
   end
 
-  local relative = path:sub(#self.root_path + 1)
+  local relative = normalized:sub(#self.root_path + 1)
   if relative:sub(1, 1) == "/" then
     relative = relative:sub(2)
   end

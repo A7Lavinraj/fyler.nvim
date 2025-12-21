@@ -108,7 +108,7 @@ function Finder:load_with(kind, bufname)
       self:dispatch_refresh(function()
         local altbufnr = vim.fn.bufnr("#")
         if config.values.views.finder.follow_current_file and altbufnr ~= -1 then
-          self:navigate(Path.new(vim.api.nvim_buf_get_name(altbufnr)):normalize())
+          self:navigate(vim.api.nvim_buf_get_name(altbufnr))
         end
       end)
     end,
