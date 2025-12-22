@@ -99,8 +99,10 @@ function Finder:open(bufname, kind)
       if bufname == "" or util.is_protocol_uri(bufname) then
         return self:dispatch_refresh({ force_update = true })
       end
-
-      return M.navigate(bufname, { filter = { self.win.bufname }})
+      return M.navigate(bufname, {
+        filter = { self.win.bufname },
+        force_refresh = true,
+      })
     end,
     right         = view_cfg.win.right,
     title         = string.format(" %s ", self:getcwd()),
@@ -392,9 +394,7 @@ end
 ---@param kind WinKind|nil
 function M.open(uri, kind)
   local normalized_uri = normalize_uri(uri)
-  local finder = Manager:get(normalized_uri)
-  local win_kind = kind or config.values.views.finder.win.kind
-  finder:open(normalized_uri, win_kind)
+  Manager:get(normalized_uri):open(normalized_uri, kind or config.values.views.finder.win.kind)
 end
 
 local function _select(opts, handler)
@@ -466,7 +466,7 @@ M.navigate = vim.schedule_wrap(function(path, opts)
     end
 
     return finder:navigate(target_path, function(_, ref_id, did_update_files)
-      if not did_update_files then
+      if not (did_update_files or opts.force_refresh) then
         return set_cursor(finder, ref_id)
       end
 
