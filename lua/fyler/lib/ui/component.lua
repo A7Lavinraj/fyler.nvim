@@ -44,8 +44,8 @@ function UiComponent.new_async(fn)
     local args = { ... }
     local cb = table.remove(args)
 
-    table.insert(args, function(this)
-      cb(setmetatable(this, { __index = UiComponent }))
+    table.insert(args, function(this, ...)
+      cb(setmetatable(this, { __index = UiComponent }), ...)
     end)
 
     fn(util.unpack(args))

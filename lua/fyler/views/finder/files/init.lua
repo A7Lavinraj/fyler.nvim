@@ -33,7 +33,7 @@ function Files.new(opts)
   if path:exists() then
     watcher.register(path:normalize(), function(_, filename)
       if filename == "index" then
-        instance.finder:dispatch_refresh()
+        instance.finder:dispatch_refresh { force_update = true }
       end
     end)
   end
@@ -90,7 +90,7 @@ function Files:_register_watcher(node, register_self)
 
   if register_self and entry:is_directory() then
     watcher.register(entry.path, function()
-      self.finder:dispatch_refresh()
+      self.finder:dispatch_refresh { force_update = true }
     end)
   end
 
@@ -98,7 +98,7 @@ function Files:_register_watcher(node, register_self)
     local child_entry = self.manager:get(child.value)
     if child_entry:is_directory() and child_entry.open then
       watcher.register(child_entry.path, function()
-        self.finder:dispatch_refresh()
+        self.finder:dispatch_refresh { force_update = true }
       end)
       self:_register_watcher(child, false)
     end
@@ -132,7 +132,7 @@ function Files:expand_node(ref_id)
   assert(entry, "cannot locate entry with given ref_id")
 
   if not entry:is_directory() then
-    return
+    return self
   end
 
   entry.open = true
@@ -141,6 +141,8 @@ function Files:expand_node(ref_id)
   if node then
     self:_register_watcher(node, true)
   end
+
+  return self
 end
 
 ---@param ref_id integer
@@ -219,47 +221,47 @@ function Files:add_child(parent_ref_id, opts)
   end
 end
 
----@param ref_id integer|nil
----@param callback function
-function Files:update(ref_id, callback)
-  if type(ref_id) == "function" then
-    callback = ref_id
-    ref_id = nil
+---@param ... integer|function
+function Files:update(...)
+  local ref_id = nil
+  local onupdate = nil
+
+  for i = 1, select("#", ...) do
+    local arg = select(i, ...)
+
+    if type(arg) == "number" then
+      ref_id = arg
+    elseif type(arg) == "function" then
+      onupdate = arg
+    end
   end
 
-  if ref_id then
-    local node = self:find_node_by_ref_id(ref_id)
-    if node then
-      self:_update(node, function(err)
-        if err then
-          return callback(err)
-        end
-        callback(nil, self)
-      end)
-    else
-      callback(nil, self)
-    end
-  else
-    self:_update(self.trie, function(err)
-      if err then
-        return callback(err)
-      end
-      callback(nil, self)
-    end)
+  if not onupdate then
+    error "callback function is required"
   end
+
+  local node = ref_id and self:find_node_by_ref_id(ref_id) or self.trie
+
+  self:_update(node, function(err)
+    if err then
+      return onupdate(err)
+    end
+
+    onupdate(nil, self)
+  end)
 end
 
 ---@param node Trie
----@param callback function
-function Files:_update(node, callback)
+---@param onupdate function
+function Files:_update(node, onupdate)
   local node_entry = self.manager:get(node.value)
   if not node_entry.open then
-    return callback(nil)
+    return onupdate(nil)
   end
 
   fs.ls(node_entry.path, function(err, entries)
     if err or not entries then
-      return callback(err)
+      return onupdate(err)
     end
 
     local entry_paths = {}
@@ -292,6 +294,9 @@ function Files:_update(node, callback)
       end
     end
 
+    -- Mark as updated
+    node_entry.updated = true
+
     -- Update children recursively
     local children_list = {}
     for _, child in pairs(node.children) do
@@ -300,12 +305,12 @@ function Files:_update(node, callback)
 
     local function update_next(index)
       if index > #children_list then
-        return callback(nil)
+        return onupdate(nil)
       end
 
       self:_update(children_list[index], function(err)
         if err then
-          return callback(err)
+          return onupdate(err)
         end
         update_next(index + 1)
       end)
@@ -316,52 +321,62 @@ function Files:_update(node, callback)
 end
 
 ---@param path string
----@param callback function
-function Files:focus_path(path, callback)
+---@param onnavigate function
+function Files:navigate(path, onnavigate)
   local segments = self:path_to_segments(path)
   if not segments then
-    return callback(nil, nil)
+    return onnavigate(nil, nil, false)
   end
 
   if #segments == 0 then
-    return callback(nil, nil)
+    return onnavigate(nil, self.trie.value, false)
   end
 
-  local current_node = self.trie
+  local did_update = false
 
-  local function process_segment(index)
+  local function process_segment(index, current_node)
     if index > #segments then
-      return callback(nil, current_node.value)
+      return onnavigate(nil, current_node.value, did_update)
     end
 
     local segment = segments[index]
     local current_entry = self.manager:get(current_node.value)
 
-    if current_entry:is_directory() and not current_entry.open then
-      self:expand_node(current_node.value)
-      self:update(current_node.value, function(err)
-        if err then
-          return callback(err, nil)
+    if current_entry:is_directory() then
+      -- Check if node needs updating (not open OR not updated)
+      local needs_update = not current_entry.open or not current_entry.updated
+
+      if needs_update then
+        did_update = true
+        -- Expand and update the directory
+        self:expand_node(current_node.value):update(current_node.value, function(err)
+          if err then
+            return onnavigate(err, nil, did_update)
+          end
+
+          local next_node = current_node.children[segment]
+          if not next_node then
+            return onnavigate(nil, nil, did_update)
+          end
+
+          process_segment(index + 1, next_node)
+        end)
+      else
+        -- Node is already open and updated, skip update
+        local next_node = current_node.children[segment]
+        if not next_node then
+          return onnavigate(nil, nil, did_update)
         end
 
-        if not current_node.children[segment] then
-          return callback(nil, nil)
-        end
-
-        current_node = current_node.children[segment]
-        process_segment(index + 1)
-      end)
-    else
-      if not current_node.children[segment] then
-        return callback(nil, nil)
+        process_segment(index + 1, next_node)
       end
-
-      current_node = current_node.children[segment]
-      process_segment(index + 1)
+    else
+      -- It's a file, can't navigate further
+      return onnavigate(nil, nil, did_update)
     end
   end
 
-  process_segment(1)
+  process_segment(1, self.trie)
 end
 
 ---@return table
@@ -415,10 +430,9 @@ function Files:_parse_lines(lines, root_entry)
   parents:push { node = parsed_tree_root, indentation = -1 }
 
   for _, line in ipairs(lines) do
-    local parser = require "fyler.views.finder.parser"
-    local name = parser.parse_name(line)
-    local ref_id = parser.parse_ref_id(line)
-    local indent_level = parser.parse_indent_level(line)
+    local name = util.parse_name(line)
+    local ref_id = util.parse_ref_id(line)
+    local indent_level = util.parse_indent_level(line)
 
     while true do
       local parent = parents:top()

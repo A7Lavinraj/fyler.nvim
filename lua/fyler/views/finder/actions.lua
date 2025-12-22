@@ -1,12 +1,12 @@
 local config = require "fyler.config"
-local fs = require "fyler.lib.fs"
-local fyler = require "fyler"
-local parser = require "fyler.views.finder.parser"
+local util = require "fyler.lib.util"
 
 local M = {}
 
-function M.n_close()
-  return fyler.close
+function M.n_close(self)
+  return function()
+    self:close()
+  end
 end
 
 ---@class fyler.views.finder.actions.select_opts
@@ -19,7 +19,7 @@ end
 local function _select(self, opener, opts)
   opts = vim.tbl_extend("force", { winpick = true }, opts or {})
 
-  local ref_id = parser.parse_ref_id(vim.api.nvim_get_current_line())
+  local ref_id = util.parse_ref_id(vim.api.nvim_get_current_line())
   if not ref_id then
     return
   end
@@ -35,8 +35,8 @@ local function _select(self, opener, opts)
     else
       self.files:expand_node(ref_id)
     end
-    self:dispatch_refresh()
-    return
+
+    return self:dispatch_refresh { force_update = true }
   end
 
   local function open_in_window(winid)
@@ -99,39 +99,33 @@ end
 function M.n_collapse_all(self)
   return function()
     self.files:collapse_all()
-    self:dispatch_refresh()
+    self:dispatch_refresh { force_update = true }
   end
 end
 
 ---@param self Finder
 function M.n_goto_parent(self)
   return function()
-    local parent_dir = vim.fn.fnamemodify(self.dir, ":h")
-    if parent_dir == self.dir then
-      return
+    local parent_dir = vim.fn.fnamemodify(self:getcwd(), ":h")
+    if parent_dir ~= self.dir then
+      self:change_root(parent_dir):dispatch_refresh { force_update = true }
     end
-
-    self:chdir(parent_dir)
-    self:dispatch_refresh()
   end
 end
 
 ---@param self Finder
 function M.n_goto_cwd(self)
   return function()
-    if self.dir == fs.cwd() then
-      return
+    if self.dir ~= self:getcwd() then
+      self:change_root(self.dir):dispatch_refresh { force_update = true }
     end
-
-    self:chdir(fs.cwd())
-    self:dispatch_refresh()
   end
 end
 
 ---@param self Finder
 function M.n_goto_node(self)
   return function()
-    local ref_id = parser.parse_ref_id(vim.api.nvim_get_current_line())
+    local ref_id = util.parse_ref_id(vim.api.nvim_get_current_line())
     if not ref_id then
       return
     end
@@ -142,10 +136,9 @@ function M.n_goto_node(self)
     end
 
     if entry:is_directory() then
-      self:chdir(entry.path)
-      self:dispatch_refresh()
+      self:change_root(entry.path):dispatch_refresh { force_update = true }
     else
-      M.n_select(self)()
+      self:exec_action "n_select"
     end
   end
 end
@@ -153,7 +146,7 @@ end
 ---@param self Finder
 function M.n_collapse_node(self)
   return function()
-    local ref_id = parser.parse_ref_id(vim.api.nvim_get_current_line())
+    local ref_id = util.parse_ref_id(vim.api.nvim_get_current_line())
     if not ref_id then
       return
     end
@@ -183,21 +176,13 @@ function M.n_collapse_node(self)
       focus_ref_id = collapse_target
     end
 
-    self:dispatch_refresh(function()
-      if not self.win:has_valid_winid() then
-        return
-      end
-
-      local marker = string.format("/%05d", focus_ref_id)
-      local lines = vim.api.nvim_buf_get_lines(self.win.bufnr, 0, -1, false)
-
-      for ln, line in ipairs(lines) do
-        if line:find(marker, 1, true) then
-          vim.api.nvim_win_set_cursor(self.win.winid, { ln, 0 })
-          break
+    self:dispatch_refresh {
+      onrender = function()
+        if self.win:has_valid_winid() then
+          vim.fn.search(string.format("/%05d", focus_ref_id))
         end
-      end
-    end)
+      end,
+    }
   end
 end
 

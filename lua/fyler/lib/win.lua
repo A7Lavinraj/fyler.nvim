@@ -50,7 +50,7 @@ Win.__index = Win
 function Win.new(opts)
   opts = opts or {}
 
-  local instance = util.tbl_merge_keep(opts, { kind = "float" })
+  local instance = util.tbl_merge_keep(opts, { kind = "replace" })
   instance.ui = require("fyler.lib.ui").new(instance)
   setmetatable(instance, Win)
 
@@ -281,18 +281,6 @@ function Win:show()
     return
   end
 
-  if self.bufname then
-    self.bufnr = vim.fn.bufnr(self.bufname)
-    if self.bufnr == -1 then
-      self.bufnr = vim.api.nvim_create_buf(false, true)
-    end
-    if vim.api.nvim_buf_get_name(self.bufnr) ~= self.bufname then
-      vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
-    end
-  else
-    self.bufnr = vim.api.nvim_create_buf(false, true)
-  end
-
   local win_config = self:config()
   local current_bufnr = vim.api.nvim_get_current_buf()
   if win_config.split and (win_config.split:match "_all$" or win_config.split:match "_most$") then
@@ -309,15 +297,54 @@ function Win:show()
     end
 
     self.winid = vim.api.nvim_get_current_win()
-    if not self.enter then
-      vim.api.nvim_set_current_win(current_bufnr)
+
+    if self.bufname then
+      self.bufnr = vim.fn.bufnr(self.bufname)
+    end
+
+    if not self.bufnr or self.bufnr == -1 then
+      self.bufnr = vim.api.nvim_create_buf(false, true)
+
+      if self.bufname then
+        vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
+      end
     end
 
     vim.api.nvim_win_set_buf(self.winid, self.bufnr)
+
+    if not self.enter then
+      vim.api.nvim_set_current_win(current_bufnr)
+    end
   elseif self.kind:match "^replace" then
     self.winid = vim.api.nvim_get_current_win()
-    vim.api.nvim_win_set_buf(self.winid, self.bufnr)
+
+    if self.bufname then
+      self.bufnr = vim.fn.bufnr(self.bufname)
+    end
+
+    if not self.bufnr or self.bufnr == -1 then
+      vim.api.nvim_command "enew"
+      self.bufnr = vim.api.nvim_get_current_buf()
+
+      if self.bufname then
+        vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
+      end
+    else
+      vim.api.nvim_win_set_buf(self.winid, self.bufnr)
+    end
   else
+    if self.bufname then
+      self.bufnr = vim.fn.bufnr(self.bufname)
+    end
+
+    if not self.bufnr or self.bufnr == -1 then
+      self.bufnr = vim.api.nvim_create_buf(false, true)
+
+      if self.bufname then
+        vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
+      end
+    end
+
     self.winid = vim.api.nvim_open_win(self.bufnr, self.enter, win_config)
   end
 
@@ -327,9 +354,9 @@ function Win:show()
 
   self.augroup = vim.api.nvim_create_augroup("fyler_augroup_win_" .. self.bufnr, { clear = true })
   self.namespace = vim.api.nvim_create_namespace("fyler_namespace_win_" .. self.bufnr)
+
   local mappings_opts = self.mappings_opts or {}
   mappings_opts.buffer = self.bufnr
-
   for keys, v in pairs(self.mappings or {}) do
     for _, k in ipairs(util.tbl_wrap(keys)) do
       vim.keymap.set("n", k, v, mappings_opts)
@@ -356,45 +383,32 @@ function Win:show()
     vim.api.nvim_create_autocmd("User", { pattern = event, group = self.augroup, callback = callback })
   end
 
+  vim.api.nvim_buf_attach(self.bufnr, false, {
+    on_detach = function()
+      if self.autocmds or self.user_autocmds then
+        pcall(vim.api.nvim_del_augroup_by_id, self.augroup)
+      end
+    end,
+  })
+
   if self.render then
     self.render()
   end
 end
 
 function Win:hide()
-  vim.api.nvim_clear_autocmds { group = self.augroup }
-
   if self.kind:match "^replace" then
     local altbufnr = vim.fn.bufnr "#"
-    if altbufnr == -1 then
+    if altbufnr == -1 or altbufnr == self.bufnr then
       util.try(vim.cmd.enew)
     else
       util.try(vim.api.nvim_win_set_buf, self.winid, altbufnr)
     end
-
-    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
   else
-    util.try(vim.api.nvim_win_close, true)
-    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
-  end
-
-  if self.on_hide then
-    self.on_hide()
-  end
-end
-
--- Handle case when user open a NON FYLER BUFFER in "Fyler" window
-function Win:recover()
-  vim.api.nvim_clear_autocmds { group = self.augroup }
-
-  if self.kind:match "^replace" or self.kind:match "^split" then
-    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
-  else
-    local current_bufnr = vim.api.nvim_get_current_buf()
     util.try(vim.api.nvim_win_close, self.winid, true)
-    util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
-    vim.api.nvim_win_set_buf(vim.api.nvim_get_current_win(), current_bufnr)
   end
+
+  util.try(vim.api.nvim_buf_delete, self.bufnr, { force = true })
 
   if self.on_hide then
     self.on_hide()

@@ -56,9 +56,16 @@
 ---   }
 --- <
 
+local deprecated = require "fyler.deprecated"
 local util = require "fyler.lib.util"
 
 local config = {}
+
+local DEPRECATION_RULES = {
+  deprecated.rename("views.finder.git", "views.finder.columns.git", {
+    message = "Configuration structure reorganized under 'views.finder.columns'",
+  }),
+}
 
 ---@class FylerConfigGitStatus
 ---@field enabled boolean
@@ -208,17 +215,19 @@ function config.defaults()
         confirm_simple = false,
         default_explorer = false,
         delete_to_trash = false,
-        git_status = {
-          enabled = true,
-          symbols = {
-            Untracked = "?",
-            Added = "+",
-            Modified = "*",
-            Deleted = "x",
-            Renamed = ">",
-            Copied = "~",
-            Conflict = "!",
-            Ignored = "#",
+        columns = {
+          git = {
+            enabled = true,
+            symbols = {
+              Untracked = "?",
+              Added = "+",
+              Modified = "*",
+              Deleted = "x",
+              Renamed = ">",
+              Copied = "~",
+              Conflict = "!",
+              Ignored = "#",
+            },
           },
         },
         icon = {
@@ -255,12 +264,13 @@ function config.defaults()
         win = {
           border = vim.o.winborder == "" and "single" or vim.o.winborder,
           buf_opts = {
-            filetype = "fyler",
-            syntax = "fyler",
+            bufhidden = "hide",
             buflisted = false,
             buftype = "acwrite",
             expandtab = true,
+            filetype = "fyler",
             shiftwidth = 2,
+            syntax = "fyler",
           },
           kind = "replace",
           kinds = {
@@ -314,9 +324,9 @@ function config.defaults()
             cursorline = false,
             number = false,
             relativenumber = false,
+            signcolumn = "no",
             winhighlight = "Normal:FylerNormal,NormalNC:FylerNormalNC",
             wrap = false,
-            signcolumn = "no",
           },
         },
       },
@@ -327,7 +337,7 @@ end
 ---@param name string
 ---@param kind WinKind|nil
 ---@return FylerConfigViewsFinder
-function config.view(name, kind)
+function config.view_cfg(name, kind)
   local view = vim.deepcopy(config.values.views[name] or {})
   view.win = require("fyler.lib.util").tbl_merge_force(view.win, view.win.kinds[kind or view.win.kind])
   return view
@@ -359,7 +369,7 @@ end
 
 ---@param name string
 ---@return table<string, function>
-function config.user_maps(name)
+function config.usr_maps(name)
   local user_maps = {}
   for k, v in pairs(config.values.views[name].mappings or {}) do
     if type(v) == "function" then
@@ -374,7 +384,7 @@ end
 function config.setup(opts)
   opts = opts or {}
 
-  config.values = util.tbl_merge_force(config.defaults(), opts)
+  config.values = util.tbl_merge_force(config.defaults(), deprecated.migrate(opts, DEPRECATION_RULES))
 
   local icon_provider = config.values.integrations.icon
   if type(icon_provider) == "string" then
@@ -393,9 +403,13 @@ function config.setup(opts)
     config.winpick_provider = winpick_provider
   end
 
-  require("fyler.autocmds").setup(config)
-  require("fyler.hooks").setup(config)
-  require("fyler.lib.hl").setup()
+  for _, sub_module in ipairs {
+    "fyler.autocmds",
+    "fyler.hooks",
+    "fyler.lib.hl",
+  } do
+    require(sub_module).setup(config)
+  end
 end
 
 return config

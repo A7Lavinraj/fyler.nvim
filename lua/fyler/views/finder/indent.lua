@@ -3,7 +3,14 @@ local config = require "fyler.config"
 local M = {}
 
 local INDENT_WIDTH = 2
-local snapshot = {}
+local snapshots = {}
+
+---@param winid integer
+---@param bufnr integer
+---@return string
+local function make_key(winid, bufnr)
+  return winid .. "_" .. bufnr
+end
 
 ---@param text string
 ---@return boolean
@@ -36,8 +43,9 @@ end
 
 ---@param bufnr integer
 ---@param lnum integer
+---@param snapshot table
 ---@return integer indent
-local function compute_indent(bufnr, lnum)
+local function compute_indent(bufnr, lnum, snapshot)
   local cached = snapshot[lnum]
   if cached then
     return cached
@@ -56,7 +64,7 @@ local function compute_indent(bufnr, lnum)
     indent = 0
     local prev_lnum = lnum - 1
     while prev_lnum >= 1 do
-      local prev_indent = snapshot[prev_lnum] or compute_indent(bufnr, prev_lnum)
+      local prev_indent = snapshot[prev_lnum] or compute_indent(bufnr, prev_lnum, snapshot)
       if prev_indent > 0 then
         indent = prev_indent
         break
@@ -81,28 +89,42 @@ local function setup_provider()
 
   vim.api.nvim_set_decoration_provider(M.indent_ns, {
     on_start = function()
-      if not M.enabled or not config.values.views.finder.indentscope.enabled then
+      if not config.values.views.finder.indentscope.enabled then
         return false
       end
 
-      snapshot = {}
+      for key in pairs(M.windows) do
+        snapshots[key] = {}
+      end
       return true
     end,
 
     on_win = function(_, winid, bufnr, topline, botline)
-      if not M.enabled or not M.win or not M.win:has_valid_bufnr() or M.win.winid ~= winid or M.win.bufnr ~= bufnr then
+      local key = make_key(winid, bufnr)
+      local win = M.windows[key]
+      if not win or not win:has_valid_bufnr() or win.winid ~= winid or win.bufnr ~= bufnr then
         return false
       end
 
+      local snapshot = snapshots[key] or {}
+      snapshots[key] = snapshot
+
       for lnum = topline + 1, botline + 1 do
-        compute_indent(bufnr, lnum)
+        compute_indent(bufnr, lnum, snapshot)
       end
 
       return true
     end,
 
     on_line = function(_, winid, bufnr, row)
-      if not M.enabled or not M.win or not M.win:has_valid_bufnr() or M.win.winid ~= winid or M.win.bufnr ~= bufnr then
+      local key = make_key(winid, bufnr)
+      local win = M.windows[key]
+      if not win or not win:has_valid_bufnr() or win.winid ~= winid or win.bufnr ~= bufnr then
+        return
+      end
+
+      local snapshot = snapshots[key]
+      if not snapshot then
         return
       end
 
@@ -127,22 +149,44 @@ local function setup_provider()
 end
 
 ---@param win Win
-function M.enable(win)
+function M.attach(win)
   if not config.values.views.finder.indentscope.enabled then
     return
   end
 
   setup_provider()
 
-  M.win = win
-  M.enabled = true
+  if not M.windows then
+    M.windows = {}
+  end
+
+  local key = make_key(win.winid, win.bufnr)
+  M.windows[key] = win
+end
+
+---@param win Win
+function M.detach(win)
+  if not M.windows then
+    return
+  end
+
+  local key = make_key(win.winid, win.bufnr)
+  M.windows[key] = nil
+  snapshots[key] = nil
+
+  if next(M.windows) == nil then
+    M.windows = {}
+    snapshots = {}
+  end
+end
+
+function M.enable(win)
+  M.attach(win)
 end
 
 function M.disable()
-  M.win = nil
-  M.enabled = false
-
-  snapshot = {}
+  M.windows = {}
+  snapshots = {}
 end
 
 return M

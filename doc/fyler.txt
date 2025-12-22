@@ -130,17 +130,19 @@ To know more about plugin customization. visit:
           confirm_simple = false,
           default_explorer = false,
           delete_to_trash = false,
-          git_status = {
-            enabled = true,
-            symbols = {
-              Untracked = "?",
-              Added = "+",
-              Modified = "*",
-              Deleted = "x",
-              Renamed = ">",
-              Copied = "~",
-              Conflict = "!",
-              Ignored = "#",
+          columns = {
+            git = {
+              enabled = true,
+              symbols = {
+                Untracked = "?",
+                Added = "+",
+                Modified = "*",
+                Deleted = "x",
+                Renamed = ">",
+                Copied = "~",
+                Conflict = "!",
+                Ignored = "#",
+              },
             },
           },
           icon = {
@@ -177,12 +179,13 @@ To know more about plugin customization. visit:
           win = {
             border = vim.o.winborder == "" and "single" or vim.o.winborder,
             buf_opts = {
-              filetype = "fyler",
-              syntax = "fyler",
+              bufhidden = "hide",
               buflisted = false,
               buftype = "acwrite",
               expandtab = true,
+              filetype = "fyler",
               shiftwidth = 2,
+              syntax = "fyler",
             },
             kind = "replace",
             kinds = {
@@ -236,9 +239,9 @@ To know more about plugin customization. visit:
               cursorline = false,
               number = false,
               relativenumber = false,
+              signcolumn = "no",
               winhighlight = "Normal:FylerNormal,NormalNC:FylerNormalNC",
               wrap = false,
-              signcolumn = "no",
             },
           },
         },

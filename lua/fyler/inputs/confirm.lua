@@ -6,52 +6,46 @@ local Confirm = {}
 Confirm.__index = Confirm
 
 local function resolve_dim(width, height)
-  local width = math.max(25, math.min(vim.o.columns, width))
-  local height = math.max(1, math.min(16, height))
-  local left = ((vim.o.columns - width) * 0.5)
-  local top = ((vim.o.lines - height) * 0.5)
-  return math.floor(width), math.floor(height), math.floor(left), math.floor(top)
+  width = math.max(25, math.min(vim.o.columns, width))
+  height = math.max(1, math.min(16, height))
+  local left = math.floor((vim.o.columns - width) * 0.5)
+  local top = math.floor((vim.o.lines - height) * 0.5)
+  return math.floor(width), math.floor(height), left, top
 end
 
----@param options table
 function Confirm:open(options, message, onsubmit)
   local width, height, left, top = resolve_dim(options.width, options.height)
   -- stylua: ignore start
   self.window = Win.new {
+    kind       = "float",
+    enter      = true,
+    width      = width,
+    height     = height,
+    left       = left,
+    top        = top,
+    border     = vim.o.winborder == "" and "rounded" or vim.o.winborder,
+    footer     = " Want to continue? (y|n) ",
+    footer_pos = "center",
+    buf_opts   = { modifiable = false },
+    win_opts   = { winhighlight = "Normal:FylerNormal,NormalNC:FylerNormalNC" },
+    mappings   = {
+      [{ 'y', 'o', '<Enter>' }] = function()
+        self.window:hide()
+        onsubmit(true)
+      end,
+      [{ 'n', 'c', '<ESC>' }] = function()
+        self.window:hide()
+        onsubmit(false)
+      end
+    },
     autocmds   = {
       QuitPre = function()
         local cmd = util.cmd_history()
         self.window:hide()
-
-        onsubmit()
+        pcall(onsubmit)
         if cmd == "qa" or cmd == "qall" or cmd == "quitall" then
-          vim.schedule(function()
-            vim.cmd.quitall {
-              bang = true
-            }
-          end)
+          vim.schedule(vim.cmd.quitall)
         end
-      end
-    },
-    border     = vim.o.winborder == "" and "rounded" or vim.o.winborder,
-    buf_opts   = {
-      modifiable = false
-    },
-    enter      = true,
-    footer     = " Want to continue? (y|n) ",
-    footer_pos = "center",
-    height     = height,
-    kind       = "float",
-    left       = left,
-    mappings   = {
-      [{ 'y','o', '<Enter>' }] = function()
-        self.window:hide()
-        onsubmit(true)
-      end,
-
-      [{ 'n', 'c', '<ESC>' }] = function()
-        self.window:hide()
-        onsubmit(false)
       end
     },
     render     = function()
@@ -61,12 +55,7 @@ function Confirm:open(options, message, onsubmit)
       else
         self.window.ui:render(message)
       end
-    end,
-    top        = top,
-    width      = width,
-    win_opts   = {
-      winhighlight = "Normal:FylerNormal,NormalNC:FylerNormalNC"
-    }
+    end
   }
   -- stylua: ignore end
 
