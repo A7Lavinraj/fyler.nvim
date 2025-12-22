@@ -67,7 +67,7 @@ function Finder:open(bufname, kind)
     autocmds      = {
       ["BufReadCmd"] = function() self:dispatch_refresh() end,
       ["BufWriteCmd"] = function() self:dispatch_mutation() end,
-      [{ "CursorMoved","CursorMovedI"}] = function() self:clamp_cursor() end,
+      [{"CursorMoved","CursorMovedI"}] = function() self:clamp_cursor() end,
     },
     border        = view_cfg.win.border,
     bufname       = bufname,
@@ -100,7 +100,7 @@ function Finder:open(bufname, kind)
         return self:dispatch_refresh({ force_update = true })
       end
 
-      return M.navigate(bufname)
+      return M.navigate(bufname, { filter = { self.win.bufname }})
     end,
     right         = view_cfg.win.right,
     title         = string.format(" %s ", self:getcwd()),
@@ -121,6 +121,17 @@ end
 ---@return string
 function Finder:getcwd()
   return assert(self.files, "files is require").root_path
+end
+
+function Finder:cursor_node_entry()
+  local entry
+  vim.api.nvim_win_call(self.win.winid, function()
+    local ref_id = util.parse_ref_id(vim.api.nvim_get_current_line())
+    if ref_id then
+      entry = vim.deepcopy(self.files:node_entry(ref_id))
+    end
+  end)
+  return entry
 end
 
 function Finder:close()
@@ -315,7 +326,8 @@ end
 ---@param uri string|nil
 ---@return string
 local function normalize_uri(uri)
-  local fs, dir, tab = require "fyler.lib.fs"
+  local fs = require "fyler.lib.fs"
+  local dir, tab = nil, nil
   if not uri or uri == "" then
     dir = fs.cwd()
     tab = tostring(vim.api.nvim_get_current_tabpage())
@@ -386,14 +398,17 @@ function M.open(uri, kind)
 end
 
 local function _select(opts, handler)
-  Manager:each(function(_, dir, tab)
-    local uri = util.build_protocol_uri(dir, tab)
-    if (not opts.filter) or (uri and util.if_any(opts.filter, function(arg)
-      return arg == uri
-    end)) then
-      handler(uri)
-    end
-  end)
+  if opts.filter then
+    util.tbl_each(opts.filter, function(uri)
+      if util.is_protocol_uri(uri) then
+        handler(uri)
+      end
+    end)
+  else
+    Manager:each(function(_, dir, tab)
+      handler(util.build_protocol_uri(dir, tab))
+    end)
+  end
 end
 
 M.close = vim.schedule_wrap(function(opts)
@@ -422,26 +437,43 @@ M.focus = vim.schedule_wrap(function(opts)
   end)
 end)
 
+-- TODO: Can futher optimize by determining whether `files:navgiate` did any change or not?
 ---@param path string|nil
 M.navigate = vim.schedule_wrap(function(path, opts)
   opts = opts or {}
+  if not path then
+    return
+  end
+
+  local set_cursor = vim.schedule_wrap(function(finder, ref_id)
+    if finder.win:has_valid_winid() and ref_id then
+      vim.api.nvim_win_call(finder.win.winid, function()
+        vim.fn.search(string.format("/%05d ", ref_id))
+      end)
+    end
+  end)
+
   _select(opts, function(uri)
     local finder = Manager:get(uri)
-    if not path or path == "" then
-      return finder:dispatch_refresh { force_update = opts.force_update }
+    if not (finder and finder.win:has_valid_winid() and finder.win:has_valid_bufnr()) then
+      return
     end
 
-    if not (finder.win:has_valid_winid() and finder.win:has_valid_bufnr()) then
-      return finder:dispatch_refresh { force_update = opts.force_update }
+    local target_path = require("fyler.lib.path").new(path):absolute()
+    local node_entry = finder:cursor_node_entry()
+    if node_entry and node_entry.path == target_path then
+      return
     end
 
-    return finder:navigate(require("fyler.lib.path").new(path):absolute(), function(_, ref_id)
-      finder:dispatch_refresh {
+    return finder:navigate(target_path, function(_, ref_id, did_update_files)
+      if not did_update_files then
+        return set_cursor(finder, ref_id)
+      end
+
+      return finder:dispatch_refresh {
         force_update = opts.force_update,
         onrender = function()
-          if finder.win:has_valid_winid() and finder.win:has_valid_bufnr() and ref_id then
-            vim.fn.search(ref_id)
-          end
+          set_cursor(finder, ref_id)
         end,
       }
     end)

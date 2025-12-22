@@ -56,11 +56,9 @@ local T = MiniTest.new_set {
 T["open"] = function(kind)
   child.cmd(string.format([[ lua require('fyler').open { dir = '%s', kind = '%s' } ]], dir_data, kind))
 
-  vim.uv.sleep(50)
+  vim.uv.sleep(20)
 
   eq(child.o.filetype, "fyler")
-
-  child.dbg_screen()
 
   local lines = child.get_lines(0, 0, -1, false)
 
@@ -75,11 +73,9 @@ end
 T["toggle"] = function(kind)
   child.cmd(string.format([[ lua require('fyler').toggle { dir = '%s', kind = '%s' } ]], dir_data, kind))
 
-  vim.uv.sleep(50)
+  vim.uv.sleep(20)
 
   eq(child.o.filetype, "fyler")
-
-  child.dbg_screen()
 
   local lines = child.get_lines(0, 0, -1, false)
 
@@ -94,11 +90,10 @@ end
 T["close"] = function(kind)
   child.cmd(string.format([[ lua require('fyler').toggle { dir = '%s', kind = '%s' } ]], dir_data, kind))
 
-  vim.uv.sleep(50)
+  vim.uv.sleep(20)
 
   eq(child.o.filetype, "fyler")
 
-  child.dbg_screen()
   child.cmd [[ lua require('fyler').close() ]]
 
   eq(child.o.filetype, "")
@@ -107,18 +102,15 @@ end
 T["navigate"] = function(kind)
   child.cmd(string.format([[ lua require('fyler').open { dir = '%s', kind = '%s' } ]], dir_data, kind))
 
-  vim.uv.sleep(50)
+  vim.uv.sleep(20)
 
   eq(child.o.filetype, "fyler")
 
-  child.dbg_screen()
   child.cmd(
     string.format([[ lua require('fyler').navigate '%s' ]], vim.fs.joinpath(dir_data, "test-dir/test-deep-file"), kind)
   )
 
-  vim.uv.sleep(50)
-
-  child.dbg_screen()
+  vim.uv.sleep(20)
 
   eq(child.api.nvim_get_current_line():match "/%d+%s(.*)$", "test-deep-file")
 end

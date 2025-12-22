@@ -130,7 +130,7 @@ function Files:expand_node(ref_id)
   assert(entry, "cannot locate entry with given ref_id")
 
   if not entry:is_directory() then
-    return
+    return self
   end
 
   entry.open = true
@@ -139,6 +139,8 @@ function Files:expand_node(ref_id)
   if node then
     self:_register_watcher(node, true)
   end
+
+  return self
 end
 
 ---@param ref_id integer
@@ -290,6 +292,9 @@ function Files:_update(node, onupdate)
       end
     end
 
+    -- Mark as updated
+    node_entry.updated = true
+
     -- Update children recursively
     local children_list = {}
     for _, child in pairs(node.children) do
@@ -318,39 +323,54 @@ end
 function Files:navigate(path, onnavigate)
   local segments = self:path_to_segments(path)
   if not segments then
-    return onnavigate(nil, nil)
+    return onnavigate(nil, nil, false)
   end
 
   if #segments == 0 then
-    return onnavigate(nil, self.trie.value)
+    return onnavigate(nil, self.trie.value, false)
   end
+
+  local did_update = false
 
   local function process_segment(index, current_node)
     if index > #segments then
-      return onnavigate(nil, current_node.value)
+      return onnavigate(nil, current_node.value, did_update)
     end
 
     local segment = segments[index]
     local current_entry = self.manager:get(current_node.value)
 
     if current_entry:is_directory() then
-      -- Always expand and update directories
-      self:expand_node(current_node.value)
-      self:update(current_node.value, function(err)
-        if err then
-          return onnavigate(err, nil)
-        end
+      -- Check if node needs updating (not open OR not updated)
+      local needs_update = not current_entry.open or not current_entry.updated
 
+      if needs_update then
+        did_update = true
+        -- Expand and update the directory
+        self:expand_node(current_node.value):update(current_node.value, function(err)
+          if err then
+            return onnavigate(err, nil, did_update)
+          end
+
+          local next_node = current_node.children[segment]
+          if not next_node then
+            return onnavigate(nil, nil, did_update)
+          end
+
+          process_segment(index + 1, next_node)
+        end)
+      else
+        -- Node is already open and updated, skip update
         local next_node = current_node.children[segment]
         if not next_node then
-          return onnavigate(nil, nil)
+          return onnavigate(nil, nil, did_update)
         end
 
         process_segment(index + 1, next_node)
-      end)
+      end
     else
       -- It's a file, can't navigate further
-      return onnavigate(nil, nil)
+      return onnavigate(nil, nil, did_update)
     end
   end
 

@@ -50,8 +50,8 @@ end
 ---@return string|nil, string|nil
 local function icon_and_hl(item)
   local icon, hl = config.icon_provider(item.type, item.path)
-  if not icon or icon == "" then
-    return
+  if config.values.integrations.icon == "none" then
+    return icon, hl
   end
 
   if item.type == "directory" then
@@ -66,8 +66,9 @@ local function icon_and_hl(item)
   return icon, hl
 end
 
-local function create_column_context(node, flattened_entries, files_column)
+local function create_column_context(tag, node, flattened_entries, files_column)
   return {
+    tag = tag,
     root_dir = node.path,
     entries = flattened_entries,
 
@@ -133,17 +134,20 @@ local columns = {
         end
       end
 
-      onbuild(
-        { tag = "files", children = { Row { Column(context.get_files_column()), Column(column) } } },
-        { partial = true }
-      )
+      -- IMPORTANT: If both tags are not equal then this render call doesn't belongs to any initiater
+      -- and must be prevented from updating UI otherwise UI could get corrupted data.
+      if M.tag == context.tag then
+        onbuild(
+          { tag = "files", children = { Row { Column(context.get_files_column()), Column(column) } } },
+          { partial = true }
+        )
+      end
     end)
   end,
 }
 
 M.files = Component.new_async(function(node, callback)
-  local tag = M.tag + 1
-  M.tag = tag
+  M.tag = M.tag + 1
 
   if not node or not node.children then
     return callback { tag = "files", children = {} }
@@ -160,11 +164,11 @@ M.files = Component.new_async(function(node, callback)
     local icon, hl = icon_and_hl(item)
     local icon_highlight = (item.type == "directory") and "FylerFSDirectoryIcon" or hl
     local name_highlight = (item.type == "directory") and "FylerFSDirectoryName" or nil
-    icon = icon and (icon .. " ") or ""
+    icon = icon and (icon .. "  ") or ""
 
     local indentation_text = Text(string.rep(" ", 2 * depth))
     local icon_text = Text(icon, { highlight = icon_highlight })
-    local ref_id_text = item.ref_id and Text(string.format(" /%05d ", item.ref_id)) or Text ""
+    local ref_id_text = item.ref_id and Text(string.format("/%05d ", item.ref_id)) or Text ""
     local name_text = Text(item.name, { highlight = name_highlight })
     table.insert(files_column, Row { indentation_text, icon_text, ref_id_text, name_text })
   end
@@ -174,7 +178,7 @@ M.files = Component.new_async(function(node, callback)
   for name, cfg in pairs(config.values.views.finder.columns) do
     local column = columns[name]
     if column and cfg.enabled then
-      column(create_column_context(node, flattened_entries, files_column), cfg, callback)
+      column(create_column_context(M.tag, node, flattened_entries, files_column), cfg, callback)
     end
   end
 end)

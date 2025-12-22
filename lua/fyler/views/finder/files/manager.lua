@@ -3,6 +3,7 @@ local util = require "fyler.lib.util"
 ---@class Entry
 ---@field ref_id integer
 ---@field open boolean
+---@field updated boolean
 ---@field name string
 ---@field path string
 ---@field type string
