@@ -18,8 +18,20 @@ function M.register(path, callback)
     return
   end
 
-  M._instances[_path:normalize()] = assert(vim.uv.new_fs_event())
-  M._instances[_path:normalize()]:start(_path:normalize(), {}, util.debounce_wrap(20, callback))
+  local normalized = _path:normalize()
+  if M._instances[normalized] then
+    M._instances[normalized]:stop()
+    M._instances[normalized] = nil
+  end
+
+  M._instances[normalized] = assert(vim.uv.new_fs_event())
+  M._instances[normalized]:start(normalized, {}, function(...)
+    local args = { ... }
+    -- TODO: Don't know is that a good practice to use function address as debounce ID
+    util.debounce(tostring(callback), 200, function()
+      callback(util.unpack(args))
+    end)
+  end)
 end
 
 ---@param path string
@@ -29,12 +41,22 @@ function M.unregister(path)
   end
 
   local _path = Path.new(path)
-  local fs_event = M._instances[_path:normalize()]
+  local normalized = _path:normalize()
+  local fs_event = M._instances[normalized]
+
   if not fs_event then
     return
   end
 
   fs_event:stop()
+  M._instances[normalized] = nil
+end
+
+function M.unregister_all()
+  for path, fs_event in pairs(M._instances) do
+    fs_event:stop()
+    M._instances[path] = nil
+  end
 end
 
 return M

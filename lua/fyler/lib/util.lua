@@ -209,26 +209,6 @@ function M.debounce(name, timeout, fn)
   end, timeout)
 end
 
----@param timeout integer
----@param fn function
----@return function
-function M.debounce_wrap(timeout, fn)
-  local timer = nil
-
-  return function(...)
-    local args = { ... }
-
-    if timer then
-      timer:stop()
-    end
-
-    timer = vim.defer_fn(function()
-      timer = nil
-      fn(unpack(args))
-    end, timeout)
-  end
-end
-
 ---@param index integer|nil
 function M.cmd_history(index)
   return vim.fn.histget("cmd", index or -1)
