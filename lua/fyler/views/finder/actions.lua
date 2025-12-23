@@ -5,6 +5,7 @@ local M = {}
 
 function M.n_close(self)
   return function()
+    self.files:destroy()
     self:close()
   end
 end
