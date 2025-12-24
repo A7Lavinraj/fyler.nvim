@@ -1,3 +1,5 @@
+local config = require "fyler.config"
+
 ---@class UiRenderer
 ---@field line string[]
 ---@field extmark table[]
@@ -232,7 +234,7 @@ function Renderer:_render_row(component)
   self.flag.in_row = true
   self.flag.row_base_line = #self.line
 
-  local current_col = 0
+  local current_col = (config.values.views.finder.indentscope.level == 0) and 1 or 0
   local max_lines_in_row = 0
 
   -- First pass: calculate how many lines this row will need

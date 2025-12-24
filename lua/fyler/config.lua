@@ -116,6 +116,7 @@ local DEPRECATION_RULES = {
 ---@field enabled boolean
 ---@field group string
 ---@field marker string
+---@field level number
 
 ---@alias FylerConfigBorder
 ---| "bold"
@@ -178,6 +179,7 @@ local DEPRECATION_RULES = {
 ---@field enabled boolean|nil
 ---@field group string|nil
 ---@field marker string|nil
+---@field level number|nil
 
 ---@class FylerSetupWin
 ---@field border FylerConfigBorder|string[]|nil
@@ -239,6 +241,7 @@ function config.defaults()
           enabled = true,
           group = "FylerIndentMarker",
           marker = "│",
+          level = 1,
         },
         mappings = {
           ["q"] = "CloseView",

@@ -154,6 +154,7 @@ To know more about plugin customization. visit:
             enabled = true,
             group = "FylerIndentMarker",
             marker = "│",
+            level = 1,
           },
           mappings = {
             ["q"] = "CloseView",

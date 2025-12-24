@@ -130,9 +130,10 @@ local function setup_provider()
 
       local lnum = row + 1
       local indent = snapshot[lnum]
+      local level = config.values.views.finder.indentscope.level
 
       if indent and indent >= INDENT_WIDTH then
-        for col = 0, indent - INDENT_WIDTH, INDENT_WIDTH do
+        for col = math.max(0, (level - 1) * INDENT_WIDTH), indent - INDENT_WIDTH, INDENT_WIDTH do
           vim.api.nvim_buf_set_extmark(bufnr, M.indent_ns, row, col, {
             virt_text = {
               { config.values.views.finder.indentscope.marker, config.values.views.finder.indentscope.group },
