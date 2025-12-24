@@ -91,10 +91,14 @@ function M.setup()
     FylerYellow          = { fg = palette.yellow },
     FylerWinPick         = { fg = palette.white, bg = palette.blue },
     -- Groups with link must be after non-linked
-    FylerBorder          = { link = "FylerNormal" },
-    FylerIndentMarker    = { link = "FylerGrey" },
-    FylerNormal          = { link = "Normal" },
-    FylerNormalNC        = { link = "NormalNC" },
+    FylerBorder           = { link = "FylerNormal" },
+    FylerIndentMarker     = { link = "FylerGrey" },
+    FylerNormal           = { link = "Normal" },
+    FylerNormalNC         = { link = "NormalNC" },
+    FylerDiagnosticError  = { link = "DiagnosticError" },
+    FylerDiagnosticWarn   = { link = "DiagnosticWarn" },
+    FylerDiagnosticInfo   = { link = "DiagnosticInfo" },
+    FylerDiagnosticHint   = { link = "DiagnosticHint" },
   }
   -- stylua: ignore end
 

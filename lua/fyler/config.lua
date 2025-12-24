@@ -229,6 +229,15 @@ function config.defaults()
               Ignored = "#",
             },
           },
+          diagnostic = {
+            enabled = true,
+            symbols = {
+              Error = "E",
+              Warn = "W",
+              Info = "I",
+              Hint = "H",
+            },
+          },
         },
         icon = {
           directory_collapsed = nil,
