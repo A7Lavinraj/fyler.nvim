@@ -320,7 +320,7 @@ function Finder:dispatch_mutation()
     end
 
     if should_mutate(operations, require("fyler.lib.path").new(self:getcwd())) then
-      M.navigate(run_mutation(operations), { force_update = true })
+      M.navigate(run_mutation(operations) or "", { force_update = true, force_refresh = true })
     end
   end)
 end
@@ -465,17 +465,26 @@ M.navigate = vim.schedule_wrap(function(path, opts)
       return
     end
 
-    return finder:navigate(target_path, function(_, ref_id, did_update_files)
-      if not (did_update_files or opts.force_refresh) then
-        return set_cursor(finder, ref_id)
+    local update_table = async.wrap(function(...)
+      finder.files:update(...)
+    end)
+
+    async.void(function()
+      if opts.force_update then
+        update_table()
       end
 
-      return finder:dispatch_refresh {
-        force_update = opts.force_update,
-        onrender = function()
-          set_cursor(finder, ref_id)
-        end,
-      }
+      finder:navigate(target_path, function(_, ref_id)
+        if not opts.force_refresh then
+          return set_cursor(finder, ref_id)
+        end
+
+        return finder:dispatch_refresh {
+          onrender = function()
+            set_cursor(finder, ref_id)
+          end,
+        }
+      end)
     end)
   end)
 end)
