@@ -35,6 +35,9 @@ T["configuration"] = function()
   expect_config("views.finder.delete_to_trash", false)
   expect_config("views.finder.follow_current_file", true)
 
+  expect_config("views.finder.columns_order[1]", "git")
+  expect_config("views.finder.columns_order[2]", "diagnostic")
+
   expect_config("views.finder.columns.git.enabled", true)
   expect_config("views.finder.columns.git.symbols.Untracked", "?")
   expect_config("views.finder.columns.git.symbols.Added", "+")
@@ -44,6 +47,12 @@ T["configuration"] = function()
   expect_config("views.finder.columns.git.symbols.Copied", "~")
   expect_config("views.finder.columns.git.symbols.Conflict", "!")
   expect_config("views.finder.columns.git.symbols.Ignored", "#")
+
+  expect_config("views.finder.columns.diagnostic.enabled", true)
+  expect_config("views.finder.columns.diagnostic.symbols.Error", "E")
+  expect_config("views.finder.columns.diagnostic.symbols.Warn", "W")
+  expect_config("views.finder.columns.diagnostic.symbols.Info", "I")
+  expect_config("views.finder.columns.diagnostic.symbols.Hint", "H")
 
   expect_config("views.finder.icon.directory_collapsed", vim.NIL)
   expect_config("views.finder.icon.directory_empty", vim.NIL)
