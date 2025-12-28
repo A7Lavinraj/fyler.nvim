@@ -6,6 +6,7 @@ local M = {}
 
 ---@class Finder
 ---@field dir string             : Home directory local to instance
+---@field tab string             : Tab ID
 ---@field files Files            : Tree state local to instance
 ---@field private _tag integer   : Render generation ID
 ---@field private _cache integer : Cache table
@@ -13,16 +14,14 @@ local Finder = {}
 Finder.__index = Finder
 
 ---@param dir string   : Home directory local to instance
----@param files Files  : Tree state local to instance
-function Finder.new(dir, files)
+---@param tab string   : Tab ID
+function Finder.new(dir, tab)
   local instance = {}
   instance._tag = 0
   instance._cache = {}
 
   instance.dir = dir
-  instance.files = files
-  instance.config = config
-  instance.files.finder = instance
+  instance.tab = tab
   return setmetatable(instance, Finder)
 end
 
@@ -158,9 +157,8 @@ function Finder:change_root(path)
     open = true,
     type = "directory",
     name = vim.fn.fnamemodify(path, ":t"),
+    finder = self,
   }
-
-  self.files.finder = self
 
   if self.win then
     self.win:update_title(string.format(" %s ", path))
@@ -365,15 +363,14 @@ function Manager:get(uri)
 
   local finder = self.states[tab][dir]
   if not finder then
-    finder = Finder.new(
-      dir,
-      require("fyler.views.finder.files").new {
-        path = dir,
-        open = true,
-        type = "directory",
-        name = vim.fn.fnamemodify(dir, ":t"),
-      }
-    )
+    finder = Finder.new(dir, tab)
+    finder.files = require("fyler.views.finder.files").new {
+      path = dir,
+      open = true,
+      type = "directory",
+      name = vim.fn.fnamemodify(dir, ":t"),
+      finder = finder,
+    }
 
     self.states[tab][dir] = finder
   end
