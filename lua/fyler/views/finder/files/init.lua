@@ -22,6 +22,7 @@ function Files.new(opts)
   local instance = {}
   instance.manager = Manager.new()
   instance.root_path = opts.path
+  instance.finder = opts.finder
   instance.git_watcher_path = nil
 
   local ref_id = instance.manager:set(opts)
@@ -36,7 +37,7 @@ function Files.new(opts)
     local normalized_git_path = git_path:normalize()
     instance.git_watcher_path = normalized_git_path
 
-    watcher.register(normalized_git_path, function(_, filename)
+    watcher.register(normalized_git_path, instance.finder.tab, function(_, filename)
       if filename == "index" then
         instance.finder:dispatch_refresh { force_update = true }
       end
@@ -49,7 +50,7 @@ end
 function Files:destroy()
   self:_unregister_watcher(self.trie, true)
   if self.git_watcher_path then
-    watcher.unregister(self.git_watcher_path)
+    watcher.unregister(self.git_watcher_path, self.finder.tab)
     self.git_watcher_path = nil
   end
 end
@@ -102,7 +103,7 @@ function Files:_register_watcher(node, register_self)
   end
 
   if register_self and entry:is_directory() then
-    watcher.register(entry.path, function()
+    watcher.register(entry.path, self.finder.tab, function()
       self.finder:dispatch_refresh { force_update = true }
     end)
   end
@@ -110,7 +111,7 @@ function Files:_register_watcher(node, register_self)
   for _, child in pairs(node.children) do
     local child_entry = self.manager:get(child.value)
     if child_entry:is_directory() and child_entry.open then
-      watcher.register(child_entry.path, function()
+      watcher.register(child_entry.path, self.finder.tab, function()
         self.finder:dispatch_refresh { force_update = true }
       end)
       self:_register_watcher(child, false)
@@ -127,13 +128,13 @@ function Files:_unregister_watcher(node, unregister_self)
   end
 
   if unregister_self and entry:is_directory() then
-    watcher.unregister(entry.path)
+    watcher.unregister(entry.path, self.finder.tab)
   end
 
   for _, child in pairs(node.children) do
     local child_entry = self.manager:get(child.value)
     if child_entry:is_directory() then
-      watcher.unregister(child_entry.path)
+      watcher.unregister(child_entry.path, self.finder.tab)
       self:_unregister_watcher(child, false)
     end
   end
@@ -209,7 +210,7 @@ function Files:_collapse_recursive(node)
   local entry = self.manager:get(node.value)
   if entry:is_directory() and entry.open then
     entry.open = false
-    watcher.unregister(entry.path)
+    watcher.unregister(entry.path, self.finder.tab)
   end
 
   for _, child in pairs(node.children) do
