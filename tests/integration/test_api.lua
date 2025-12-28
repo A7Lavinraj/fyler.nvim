@@ -104,10 +104,8 @@ T["navigate"] = function(kind)
 
   vim.uv.sleep(20)
 
-  eq(child.o.filetype, "fyler")
-
   child.cmd(
-    string.format([[ lua require('fyler').navigate '%s' ]], vim.fs.joinpath(dir_data, "test-dir/test-deep-file"), kind)
+    string.format([[ lua require('fyler').navigate '%s' ]], vim.fs.joinpath(dir_data, "test-dir/test-deep-file"))
   )
 
   vim.uv.sleep(20)

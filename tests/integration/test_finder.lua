@@ -202,448 +202,443 @@ end
 T["synchronize"] = MiniTest.new_set {}
 
 -- TODO: Everything looking fine with manual testing but will fix following test
--- T["synchronize"]["basic operations"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   child.dbg_screen()
---
---   local lines = child.get_lines(0, 0, -1, false)
---   lines[2] = lines[2]:gsub("test", "move")
---   local copy_line = lines[1]:gsub("test", "copy")
---   table.insert(lines, copy_line)
---   table.insert(lines, "new-dir/")
---   table.insert(lines, "new-file")
---   table.remove(lines, 3)
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.dbg_screen()
---   child.cmd [[ write ]]
---   vim.uv.sleep(50)
---
---   child.dbg_screen()
---
---   local lines = child.get_lines(0, 0, -1, false)
---   table.sort(lines)
---
---   eq(lines[1], "COPY   test-dir > copy-dir")
---   eq(lines[2], "CREATE new-dir")
---   eq(lines[3], "CREATE new-file")
---   eq(lines[4], "DELETE test-file")
---   eq(lines[5], "MOVE   test-dir/test-deep-file > test-dir/move-deep-file")
---
---   child.type_keys "y"
---   child.o.conceallevel = 0
---
---   vim.uv.sleep(50)
---
---   child.dbg_screen()
---
---   local new_lines = child.get_lines(0, 0, -1, false)
---   table.sort(new_lines)
---   eq(parse_name(new_lines[1]), "move-deep-file")
---   eq(parse_name(new_lines[2]), "copy-dir")
---   eq(parse_name(new_lines[3]), "test-dir")
---   eq(parse_name(new_lines[4]), "new-dir")
---   eq(parse_name(new_lines[5]), "new-file")
---
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "copy-dir")), 1)
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "new-dir")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "new-file")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 0)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "move-deep-file")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "test-deep-file")), 0)
---
---   vim.uv.sleep(1000)
--- end
---
--- T["synchronize"]["rename file"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   lines[3] = lines[3]:gsub("test", "renamed")
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.dbg_screen()
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   child.dbg_screen()
---
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-file")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 0)
---
---   local new_lines = child.get_lines(0, 0, -1, false)
---   eq(parse_name(new_lines[3]), "renamed-file")
--- end
---
--- T["synchronize"]["rename directory"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   lines[1] = lines[1]:gsub("test", "renamed")
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "renamed-dir")), 1)
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "test-dir")), 0)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-dir", "test-deep-file")), 1)
---
---   local new_lines = child.get_lines(0, 0, -1, false)
---   eq(parse_name(new_lines[1]), "renamed-dir")
--- end
---
--- T["synchronize"]["delete file"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   table.remove(lines, 3)
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 0)
---
---   local new_lines = child.get_lines(0, 0, -1, false)
---   eq(#new_lines, 2)
--- end
---
--- T["synchronize"]["delete directory"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   table.remove(lines, 1)
---   table.remove(lines, 1)
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "test-dir")), 0)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "test-deep-file")), 0)
---
---   local new_lines = child.get_lines(0, 0, -1, false)
---   eq(#new_lines, 1)
--- end
---
--- T["synchronize"]["create file"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   table.insert(lines, "new-file")
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "new-file")), 1)
---
---   local new_lines = child.get_lines(0, 0, -1, false)
---   local found = false
---   for _, line in ipairs(new_lines) do
---     if parse_name(line) == "new-file" then
---       found = true
---       break
---     end
---   end
---   eq(found, true)
--- end
---
--- T["synchronize"]["create directory"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   table.insert(lines, "new-directory/")
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "new-directory")), 1)
---
---   local new_lines = child.get_lines(0, 0, -1, false)
---   local found = false
---   for _, line in ipairs(new_lines) do
---     if parse_name(line) == "new-directory" then
---       found = true
---       break
---     end
---   end
---   eq(found, true)
--- end
---
--- T["synchronize"]["create nested directories"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   table.insert(lines, "parent/child/grandchild/")
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent")), 1)
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent", "child")), 1)
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent", "child", "grandchild")), 1)
--- end
---
--- T["synchronize"]["create nested file"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   table.insert(lines, "parent/child/file")
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent")), 1)
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent", "child")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "parent", "child", "file")), 1)
--- end
---
--- T["synchronize"]["copy file"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   local copy_line = lines[3]:gsub("test%-file", "test-file-copy")
---   table.insert(lines, copy_line)
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file-copy")), 1)
---
---   local original_content = vim.fn.readfile(vim.fs.joinpath(dir_data, "test-file"))
---   local copied_content = vim.fn.readfile(vim.fs.joinpath(dir_data, "test-file-copy"))
---   eq(original_content[1], copied_content[1])
--- end
---
--- T["synchronize"]["copy directory"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   local copy_line = lines[1]:gsub("test%-dir", "test-dir-copy")
---   table.insert(lines, copy_line)
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "test-dir")), 1)
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "test-dir-copy")), 1)
---
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "test-deep-file")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir-copy", "test-deep-file")), 1)
--- end
---
--- T["synchronize"]["move file between directories"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   lines[3] = lines[3]:gsub("test%-file", "test-dir/moved-file")
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 0)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "moved-file")), 1)
---
---   local content = vim.fn.readfile(vim.fs.joinpath(dir_data, "test-dir", "moved-file"))
---   eq(content[1], "test-file content")
--- end
---
--- T["synchronize"]["move directory"] = function(kind)
---   vim.fn.mkdir(vim.fs.joinpath(dir_data, "parent-dir"))
---
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   lines[2] = lines[2]:gsub("test%-dir", "parent-dir/test-dir")
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "test-dir")), 0)
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent-dir", "test-dir")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "parent-dir", "test-dir", "test-deep-file")), 1)
--- end
---
--- T["synchronize"]["multiple operations at once"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   lines[1] = lines[1]:gsub("test%-dir", "renamed-dir")
---   lines[2] = lines[2]:gsub("test%-deep%-file", "renamed-deep-file")
---   table.remove(lines, 3)
---   table.insert(lines, "new-file")
---   table.insert(lines, "new-dir/")
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "y"
---
---   vim.uv.sleep(50)
---
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "renamed-dir")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-dir", "renamed-deep-file")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 0)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "new-file")), 1)
---   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "new-dir")), 1)
--- end
---
--- T["synchronize"]["abort with n"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local original_lines = child.get_lines(0, 0, -1, false)
---   local lines = vim.deepcopy(original_lines)
---   lines[3] = lines[3]:gsub("test%-file", "renamed-file")
---
---   child.set_lines(0, 0, -1, false, lines)
---   child.cmd [[ write ]]
---   child.type_keys "n"
---
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-file")), 0)
---   eq(child.bo.modified, true)
--- end
---
--- T["synchronize"]["no changes when not saved"] = function(kind)
---   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
---
---   vim.uv.sleep(50)
---
---   child.type_keys "<Enter>"
---
---   vim.uv.sleep(50)
---
---   local lines = child.get_lines(0, 0, -1, false)
---   lines[3] = lines[3]:gsub("test%-file", "renamed-file")
---
---   child.set_lines(0, 0, -1, false, lines)
---
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 1)
---   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-file")), 0)
--- end
+T["synchronize"]["basic operations"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  lines[2] = lines[2]:gsub("test", "move")
+  local copy_line = lines[1]:gsub("test", "copy")
+  table.insert(lines, copy_line)
+  table.insert(lines, "new-dir/")
+  table.insert(lines, "new-file")
+  table.remove(lines, 3)
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  table.sort(lines)
+
+  eq(lines[1], "COPY   test-dir > copy-dir")
+  eq(lines[2], "CREATE new-dir")
+  eq(lines[3], "CREATE new-file")
+  eq(lines[4], "DELETE test-file")
+  eq(lines[5], "MOVE   test-dir/test-deep-file > test-dir/move-deep-file")
+
+  child.type_keys "y"
+
+  vim.uv.sleep(40)
+
+  local new_lines = vim
+    .iter(child.get_lines(0, 0, -1, false))
+    :map(function(nl)
+      return parse_name(nl)
+    end)
+    :totable()
+
+  table.sort(new_lines)
+
+  eq(new_lines[1], "copy-dir")
+  eq(new_lines[2], "move-deep-file")
+  eq(new_lines[3], "new-dir")
+  eq(new_lines[4], "new-file")
+  eq(new_lines[5], "test-dir")
+
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "copy-dir")), 1)
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "new-dir")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "new-file")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 0)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "move-deep-file")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "test-deep-file")), 0)
+end
+
+T["synchronize"]["rename file"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  lines[3] = lines[3]:gsub("test", "renamed")
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-file")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 0)
+
+  local new_lines = child.get_lines(0, 0, -1, false)
+  eq(parse_name(new_lines[3]), "renamed-file")
+end
+
+T["synchronize"]["rename directory"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  lines[1] = lines[1]:gsub("test", "renamed")
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "renamed-dir")), 1)
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "test-dir")), 0)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-dir", "test-deep-file")), 1)
+
+  local new_lines = child.get_lines(0, 0, -1, false)
+  eq(parse_name(new_lines[1]), "renamed-dir")
+end
+
+T["synchronize"]["delete file"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  table.remove(lines, 3)
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 0)
+
+  local new_lines = child.get_lines(0, 0, -1, false)
+  eq(#new_lines, 2)
+end
+
+T["synchronize"]["delete directory"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  table.remove(lines, 1)
+  table.remove(lines, 1)
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "test-dir")), 0)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "test-deep-file")), 0)
+
+  local new_lines = child.get_lines(0, 0, -1, false)
+  eq(#new_lines, 1)
+end
+
+T["synchronize"]["create file"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  table.insert(lines, "new-file")
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "new-file")), 1)
+
+  local new_lines = child.get_lines(0, 0, -1, false)
+  local found = false
+  for _, line in ipairs(new_lines) do
+    if parse_name(line) == "new-file" then
+      found = true
+      break
+    end
+  end
+  eq(found, true)
+end
+
+T["synchronize"]["create directory"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  table.insert(lines, "new-directory/")
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "new-directory")), 1)
+
+  local new_lines = child.get_lines(0, 0, -1, false)
+  local found = false
+  for _, line in ipairs(new_lines) do
+    if parse_name(line) == "new-directory" then
+      found = true
+      break
+    end
+  end
+  eq(found, true)
+end
+
+T["synchronize"]["create nested directories"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  table.insert(lines, "parent/child/grandchild/")
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent")), 1)
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent", "child")), 1)
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent", "child", "grandchild")), 1)
+end
+
+T["synchronize"]["create nested file"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  table.insert(lines, "parent/child/file")
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent")), 1)
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent", "child")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "parent", "child", "file")), 1)
+end
+
+T["synchronize"]["copy file"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  local copy_line = lines[3]:gsub("test%-file", "test-file-copy")
+  table.insert(lines, copy_line)
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file-copy")), 1)
+
+  local original_content = vim.fn.readfile(vim.fs.joinpath(dir_data, "test-file"))
+  local copied_content = vim.fn.readfile(vim.fs.joinpath(dir_data, "test-file-copy"))
+  eq(original_content[1], copied_content[1])
+end
+
+T["synchronize"]["copy directory"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  local copy_line = lines[1]:gsub("test%-dir", "test-dir-copy")
+  table.insert(lines, copy_line)
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "test-dir")), 1)
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "test-dir-copy")), 1)
+
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "test-deep-file")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir-copy", "test-deep-file")), 1)
+end
+
+T["synchronize"]["move file between directories"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  lines[3] = lines[3]:gsub("test%-file", "test-dir/moved-file")
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 0)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "moved-file")), 1)
+
+  local content = vim.fn.readfile(vim.fs.joinpath(dir_data, "test-dir", "moved-file"))
+  eq(content[1], "test-file content")
+end
+
+T["synchronize"]["move directory"] = function(kind)
+  vim.fn.mkdir(vim.fs.joinpath(dir_data, "parent-dir"))
+
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  lines[2] = lines[2]:gsub("test%-dir", "parent-dir/test-dir")
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "test-dir")), 0)
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent-dir", "test-dir")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "parent-dir", "test-dir", "test-deep-file")), 1)
+end
+
+T["synchronize"]["multiple operations at once"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  lines[1] = lines[1]:gsub("test%-dir", "renamed-dir")
+  lines[2] = lines[2]:gsub("test%-deep%-file", "renamed-deep-file")
+  table.remove(lines, 3)
+  table.insert(lines, "new-file")
+  table.insert(lines, "new-dir/")
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "y"
+
+  vim.uv.sleep(20)
+
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "renamed-dir")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-dir", "renamed-deep-file")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 0)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "new-file")), 1)
+  eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "new-dir")), 1)
+end
+
+T["synchronize"]["abort with n"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local original_lines = child.get_lines(0, 0, -1, false)
+  local lines = vim.deepcopy(original_lines)
+  lines[3] = lines[3]:gsub("test%-file", "renamed-file")
+
+  child.set_lines(0, 0, -1, false, lines)
+  child.cmd [[ write ]]
+  child.type_keys "n"
+
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-file")), 0)
+  eq(child.bo.modified, true)
+end
+
+T["synchronize"]["no changes when not saved"] = function(kind)
+  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  child.type_keys "<Enter>"
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  lines[3] = lines[3]:gsub("test%-file", "renamed-file")
+
+  child.set_lines(0, 0, -1, false, lines)
+
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-file")), 1)
+  eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-file")), 0)
+end
 
 return T
