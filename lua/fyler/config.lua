@@ -215,7 +215,7 @@ function config.defaults()
         confirm_simple = false,
         default_explorer = false,
         delete_to_trash = false,
-        columns_order = { "git" },
+        columns_order = { "git", "diagnostic" },
         columns = {
           git = {
             enabled = true,

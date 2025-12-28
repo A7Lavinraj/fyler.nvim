@@ -132,29 +132,20 @@ local columns = {
   diagnostic = function(context, _, onbuild)
     diagnostic.map_entries_async(context.root_dir, context.get_all_paths(), function(entries)
       local highlights, column = {}, {}
+
       for i, get_entry in ipairs(entries) do
-        highlights[i] = get_entry[2]
+        local entry_data = context.get_entry_data(i)
+        if entry_data then
+          local hl = get_entry[2]
+          highlights[i] = hl or ((entry_data.type == "directory") and "FylerFSDirectoryName" or nil)
+        end
         table.insert(column, Text(nil, { virt_text = { get_entry } }))
       end
 
-      for i, hl in pairs(highlights) do
-        local entry_data = context.get_entry_data(i)
-        if entry_data then
-          local name_highlight = hl or ((entry_data.type == "directory") and "FylerFSDirectoryName" or nil)
-          if name_highlight then
-            context.update_entry_highlight(i, name_highlight)
-          end
-        end
-      end
-
-      -- IMPORTANT: If both tags are not equal then this render call doesn't belongs to any initiater
-      -- and must be prevented from updating UI otherwise UI could get corrupted data.
-      if M.tag == context.tag then
-        onbuild(
-          { tag = "files", children = { Row { Column(context.get_files_column()), Column(column) } } },
-          { partial = true }
-        )
-      end
+      onbuild {
+        column = column,
+        highlights = highlights,
+      }
     end)
   end,
 }
