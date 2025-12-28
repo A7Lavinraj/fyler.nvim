@@ -52,7 +52,7 @@ function M.new_child_neovim()
       return string.format("%s\n%s", ruler, table.concat(lines, "\n"))
     end
 
-    if vim.env.FYLER_DEBUG then
+    if vim.env.DEBUG then
       vim.print(string.format("\n%s\n", process_screen(child.get_screenshot().text)))
     end
   end

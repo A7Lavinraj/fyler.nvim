@@ -3,38 +3,78 @@ local config = require "fyler.config"
 local util = require "fyler.lib.util"
 
 local M = {
-  _instances = {}, ---@type table<string, uv.uv_fs_event_t>
+  watchers = {},
 }
 
----@param path string
----@param callback function
-function M.register(path, callback)
-  if not config.values.views.finder.watcher.enabled then
-    return
-  end
-
-  local _path = Path.new(path)
-  if not _path:exists() then
-    return
-  end
-
-  M._instances[_path:normalize()] = assert(vim.uv.new_fs_event())
-  M._instances[_path:normalize()]:start(_path:normalize(), {}, util.debounce_wrap(20, callback))
+local function debounce_key(path)
+  return "watcher:" .. path
 end
 
 ---@param path string
-function M.unregister(path)
+---@param id string
+---@param callback function
+function M.register(path, id, callback)
   if not config.values.views.finder.watcher.enabled then
     return
   end
 
-  local _path = Path.new(path)
-  local fs_event = M._instances[_path:normalize()]
-  if not fs_event then
+  local p = Path.new(path)
+  if not p:exists() then
     return
   end
 
-  fs_event:stop()
+  local normalized = p:normalize()
+  local entry = M.watchers[normalized]
+
+  if not entry then
+    local fs = assert(vim.uv.new_fs_event())
+    entry = {
+      fs = fs,
+      subs = {},
+    }
+    M.watchers[normalized] = entry
+
+    fs:start(normalized, {}, function(...)
+      local args = { ... }
+      util.debounce(debounce_key(normalized), 200, function()
+        for _, cb in pairs(entry.subs) do
+          cb(unpack(args))
+        end
+      end)
+    end)
+  end
+
+  entry.subs[id] = callback
+end
+
+---@param path string
+---@param id string
+function M.unregister(path, id)
+  if not config.values.views.finder.watcher.enabled then
+    return
+  end
+
+  local p = Path.new(path)
+  local normalized = p:normalize()
+  local entry = M.watchers[normalized]
+
+  if not entry then
+    return
+  end
+
+  entry.subs[id] = nil
+
+  if vim.tbl_isempty(entry.subs) then
+    entry.fs:stop()
+    M.watchers[normalized] = nil
+  end
+end
+
+function M.unregister_all()
+  for path, entry in pairs(M.watchers) do
+    entry.fs:stop()
+    M.watchers[path] = nil
+  end
 end
 
 return M

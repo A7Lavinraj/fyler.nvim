@@ -6,6 +6,7 @@ local M = {}
 
 ---@class Finder
 ---@field dir string             : Home directory local to instance
+---@field tab string             : Tab ID
 ---@field files Files            : Tree state local to instance
 ---@field private _tag integer   : Render generation ID
 ---@field private _cache integer : Cache table
@@ -13,16 +14,14 @@ local Finder = {}
 Finder.__index = Finder
 
 ---@param dir string   : Home directory local to instance
----@param files Files  : Tree state local to instance
-function Finder.new(dir, files)
+---@param tab string   : Tab ID
+function Finder.new(dir, tab)
   local instance = {}
   instance._tag = 0
   instance._cache = {}
 
   instance.dir = dir
-  instance.files = files
-  instance.config = config
-  instance.files.finder = instance
+  instance.tab = tab
   return setmetatable(instance, Finder)
 end
 
@@ -158,9 +157,8 @@ function Finder:change_root(path)
     open = true,
     type = "directory",
     name = vim.fn.fnamemodify(path, ":t"),
+    finder = self,
   }
-
-  self.files.finder = self
 
   if self.win then
     self.win:update_title(string.format(" %s ", path))
@@ -320,7 +318,7 @@ function Finder:dispatch_mutation()
     end
 
     if should_mutate(operations, require("fyler.lib.path").new(self:getcwd())) then
-      M.navigate(run_mutation(operations), { force_update = true })
+      M.navigate(run_mutation(operations) or "", { force_update = true, force_refresh = true })
     end
   end)
 end
@@ -365,15 +363,14 @@ function Manager:get(uri)
 
   local finder = self.states[tab][dir]
   if not finder then
-    finder = Finder.new(
-      dir,
-      require("fyler.views.finder.files").new {
-        path = dir,
-        open = true,
-        type = "directory",
-        name = vim.fn.fnamemodify(dir, ":t"),
-      }
-    )
+    finder = Finder.new(dir, tab)
+    finder.files = require("fyler.views.finder.files").new {
+      path = dir,
+      open = true,
+      type = "directory",
+      name = vim.fn.fnamemodify(dir, ":t"),
+      finder = finder,
+    }
 
     self.states[tab][dir] = finder
   end
@@ -465,17 +462,26 @@ M.navigate = vim.schedule_wrap(function(path, opts)
       return
     end
 
-    return finder:navigate(target_path, function(_, ref_id, did_update_files)
-      if not (did_update_files or opts.force_refresh) then
-        return set_cursor(finder, ref_id)
+    local update_table = async.wrap(function(...)
+      finder.files:update(...)
+    end)
+
+    async.void(function()
+      if opts.force_update then
+        update_table()
       end
 
-      return finder:dispatch_refresh {
-        force_update = opts.force_update,
-        onrender = function()
-          set_cursor(finder, ref_id)
-        end,
-      }
+      finder:navigate(target_path, function(_, ref_id)
+        if not opts.force_refresh then
+          return set_cursor(finder, ref_id)
+        end
+
+        return finder:dispatch_refresh {
+          onrender = function()
+            set_cursor(finder, ref_id)
+          end,
+        }
+      end)
     end)
   end)
 end)

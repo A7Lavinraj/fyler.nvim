@@ -9,6 +9,8 @@ local Text = Ui.Text
 local Row = Ui.Row
 local Column = Ui.Column
 
+local COLUMN_ORDER = config.values.views.finder.columns_order
+
 local function sort_nodes(nodes)
   table.sort(nodes, function(x, y)
     local x_is_dir = x.type == "directory"
@@ -73,17 +75,6 @@ local function create_column_context(tag, node, flattened_entries, files_column)
     root_dir = node.path,
     entries = flattened_entries,
 
-    update_entry_highlight = function(index, highlight)
-      local row = files_column[index]
-      if row and row.children then
-        local name_component = row.children[4]
-        if name_component then
-          name_component.option = name_component.option or {}
-          name_component.option.highlight = highlight
-        end
-      end
-    end,
-
     get_entry_data = function(index)
       local entry = flattened_entries[index]
       if not entry then
@@ -116,33 +107,25 @@ local M = {}
 
 M.tag = 0
 
+-- NOTE: Detail columns now return data via callback instead of directly updating UI
 local columns = {
   git = function(context, _, onbuild)
     git.map_entries_async(context.root_dir, context.get_all_paths(), function(entries)
       local highlights, column = {}, {}
+
       for i, get_entry in ipairs(entries) do
-        highlights[i] = get_entry[2]
+        local entry_data = context.get_entry_data(i)
+        if entry_data then
+          local hl = get_entry[2]
+          highlights[i] = hl or ((entry_data.type == "directory") and "FylerFSDirectoryName" or nil)
+        end
         table.insert(column, Text(nil, { virt_text = { get_entry } }))
       end
 
-      for i, hl in pairs(highlights) do
-        local entry_data = context.get_entry_data(i)
-        if entry_data then
-          local name_highlight = hl or ((entry_data.type == "directory") and "FylerFSDirectoryName" or nil)
-          if name_highlight then
-            context.update_entry_highlight(i, name_highlight)
-          end
-        end
-      end
-
-      -- IMPORTANT: If both tags are not equal then this render call doesn't belongs to any initiater
-      -- and must be prevented from updating UI otherwise UI could get corrupted data.
-      if M.tag == context.tag then
-        onbuild(
-          { tag = "files", children = { Row { Column(context.get_files_column()), Column(column) } } },
-          { partial = true }
-        )
-      end
+      onbuild {
+        column = column,
+        highlights = highlights,
+      }
     end)
   end,
 
@@ -176,16 +159,90 @@ local columns = {
   end,
 }
 
-M.files = Component.new_async(function(node, callback)
+local function collect_and_render_details(tag, context, files_column, oncollect)
+  local results, enabled_columns = {}, {}
+  local total, completed = 0, 0
+  for _, column_name in ipairs(COLUMN_ORDER) do
+    local cfg = config.values.views.finder.columns[column_name]
+    if cfg and cfg.enabled and columns[column_name] then
+      total = total + 1
+      enabled_columns[column_name] = cfg
+    end
+  end
+
+  if total == 0 then
+    return
+  end
+
+  local function on_column_complete(column_name, column_data)
+    if M.tag ~= tag then
+      return
+    end
+
+    results[column_name] = column_data
+    completed = completed + 1
+
+    if completed == total then
+      local all_highlights = {}
+      for _, col_name in ipairs(COLUMN_ORDER) do
+        local result = results[col_name]
+        if result and result.highlights then
+          for index, highlight in pairs(result.highlights) do
+            all_highlights[index] = highlight
+          end
+        end
+      end
+
+      for index, highlight in pairs(all_highlights) do
+        local row = files_column[index]
+        if row and row.children then
+          local name_component = row.children[4]
+          if name_component then
+            name_component.option = name_component.option or {}
+            name_component.option.highlight = highlight
+          end
+        end
+      end
+
+      local detail_columns = { Column(files_column) }
+      for _, col_name in ipairs(COLUMN_ORDER) do
+        local result = results[col_name]
+        if result and result.column then
+          table.insert(detail_columns, Column(result.column))
+        end
+      end
+
+      oncollect({ tag = "files", children = { Row(detail_columns) } }, { partial = true })
+    end
+  end
+
+  for column_name, cfg in pairs(enabled_columns) do
+    local column_fn = columns[column_name]
+    if column_fn then
+      local success = pcall(function()
+        column_fn(context, cfg, function(column_data)
+          on_column_complete(column_name, column_data)
+        end)
+      end)
+
+      if not success then
+        on_column_complete(column_name, nil)
+      end
+    end
+  end
+end
+
+M.files = Component.new_async(function(node, onupdate)
   M.tag = M.tag + 1
 
+  local current_tag = M.tag
   if not node or not node.children then
-    return callback { tag = "files", children = {} }
+    return onupdate { tag = "files", children = {} }
   end
 
   local flattened_entries = flatten_tree(node)
   if #flattened_entries == 0 then
-    return callback { tag = "files", children = {} }
+    return onupdate { tag = "files", children = {} }
   end
 
   local files_column = {}
@@ -203,14 +260,14 @@ M.files = Component.new_async(function(node, callback)
     table.insert(files_column, Row { indentation_text, icon_text, ref_id_text, name_text })
   end
 
-  callback { tag = "files", children = { Row { Column(files_column) } } }
+  onupdate { tag = "files", children = { Row { Column(files_column) } } }
 
-  for name, cfg in pairs(config.values.views.finder.columns) do
-    local column = columns[name]
-    if column and cfg.enabled then
-      column(create_column_context(M.tag, node, flattened_entries, files_column), cfg, callback)
-    end
-  end
+  collect_and_render_details(
+    current_tag,
+    create_column_context(current_tag, node, flattened_entries, files_column),
+    files_column,
+    onupdate
+  )
 end)
 
 M.operations = Component.new(function(operations)

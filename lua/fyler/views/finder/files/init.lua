@@ -10,6 +10,7 @@ local watcher = require "fyler.lib.watcher"
 ---@field manager EntryManager
 ---@field root_path string
 ---@field finder Finder
+---@field git_watcher_path string|nil
 local Files = {}
 Files.__index = Files
 
@@ -21,6 +22,8 @@ function Files.new(opts)
   local instance = {}
   instance.manager = Manager.new()
   instance.root_path = opts.path
+  instance.finder = opts.finder
+  instance.git_watcher_path = nil
 
   local ref_id = instance.manager:set(opts)
   instance.trie = Trie.new(ref_id)
@@ -29,9 +32,12 @@ function Files.new(opts)
 
   instance:_register_watcher(instance.trie, true)
 
-  local path = Path.new(instance.root_path):join ".git"
-  if path:exists() then
-    watcher.register(path:normalize(), function(_, filename)
+  local git_path = Path.new(instance.root_path):join ".git"
+  if git_path:exists() then
+    local normalized_git_path = git_path:normalize()
+    instance.git_watcher_path = normalized_git_path
+
+    watcher.register(normalized_git_path, instance.finder.tab, function(_, filename)
       if filename == "index" then
         instance.finder:dispatch_refresh { force_update = true }
       end
@@ -39,6 +45,14 @@ function Files.new(opts)
   end
 
   return instance
+end
+
+function Files:destroy()
+  self:_unregister_watcher(self.trie, true)
+  if self.git_watcher_path then
+    watcher.unregister(self.git_watcher_path, self.finder.tab)
+    self.git_watcher_path = nil
+  end
 end
 
 ---@param path string
@@ -89,7 +103,7 @@ function Files:_register_watcher(node, register_self)
   end
 
   if register_self and entry:is_directory() then
-    watcher.register(entry.path, function()
+    watcher.register(entry.path, self.finder.tab, function()
       self.finder:dispatch_refresh { force_update = true }
     end)
   end
@@ -97,7 +111,7 @@ function Files:_register_watcher(node, register_self)
   for _, child in pairs(node.children) do
     local child_entry = self.manager:get(child.value)
     if child_entry:is_directory() and child_entry.open then
-      watcher.register(child_entry.path, function()
+      watcher.register(child_entry.path, self.finder.tab, function()
         self.finder:dispatch_refresh { force_update = true }
       end)
       self:_register_watcher(child, false)
@@ -114,13 +128,13 @@ function Files:_unregister_watcher(node, unregister_self)
   end
 
   if unregister_self and entry:is_directory() then
-    watcher.unregister(entry.path)
+    watcher.unregister(entry.path, self.finder.tab)
   end
 
   for _, child in pairs(node.children) do
     local child_entry = self.manager:get(child.value)
     if child_entry:is_directory() then
-      watcher.unregister(child_entry.path)
+      watcher.unregister(child_entry.path, self.finder.tab)
       self:_unregister_watcher(child, false)
     end
   end
@@ -196,7 +210,7 @@ function Files:_collapse_recursive(node)
   local entry = self.manager:get(node.value)
   if entry:is_directory() and entry.open then
     entry.open = false
-    watcher.unregister(entry.path)
+    watcher.unregister(entry.path, self.finder.tab)
   end
 
   for _, child in pairs(node.children) do
@@ -269,7 +283,6 @@ function Files:_update(node, onupdate)
       entry_paths[entry.name] = entry
     end
 
-    -- Unregister removed children
     for name, child_node in pairs(node.children) do
       if not entry_paths[name] then
         local child_entry = self.manager:get(child_node.value)
@@ -280,7 +293,6 @@ function Files:_update(node, onupdate)
       end
     end
 
-    -- Add new children
     for name, entry in pairs(entry_paths) do
       if not node.children[name] then
         local child_ref_id = self.manager:set(entry)
@@ -294,10 +306,8 @@ function Files:_update(node, onupdate)
       end
     end
 
-    -- Mark as updated
     node_entry.updated = true
 
-    -- Update children recursively
     local children_list = {}
     for _, child in pairs(node.children) do
       table.insert(children_list, child)
@@ -343,12 +353,10 @@ function Files:navigate(path, onnavigate)
     local current_entry = self.manager:get(current_node.value)
 
     if current_entry:is_directory() then
-      -- Check if node needs updating (not open OR not updated)
       local needs_update = not current_entry.open or not current_entry.updated
 
       if needs_update then
         did_update = true
-        -- Expand and update the directory
         self:expand_node(current_node.value):update(current_node.value, function(err)
           if err then
             return onnavigate(err, nil, did_update)
@@ -362,7 +370,6 @@ function Files:navigate(path, onnavigate)
           process_segment(index + 1, next_node)
         end)
       else
-        -- Node is already open and updated, skip update
         local next_node = current_node.children[segment]
         if not next_node then
           return onnavigate(nil, nil, did_update)
@@ -371,7 +378,6 @@ function Files:navigate(path, onnavigate)
         process_segment(index + 1, next_node)
       end
     else
-      -- It's a file, can't navigate further
       return onnavigate(nil, nil, did_update)
     end
   end
