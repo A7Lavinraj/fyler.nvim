@@ -72,10 +72,16 @@ function M.setup()
   -- stylua: ignore start
   local hl_groups = {
     FylerBlue            = { fg = palette.blue },
+    FylerGreen           = { fg = palette.green },
+    FylerGrey            = { fg = palette.grey },
+    FylerRed             = { fg = palette.red },
+    FylerYellow          = { fg = palette.yellow },
+
     FylerFSDirectoryIcon = { fg = palette.blue },
     FylerFSDirectoryName = { fg = palette.fg },
     FylerFSFile          = { fg = palette.white },
     FylerFSLink          = { fg = palette.grey },
+
     FylerGitAdded        = { fg = palette.green },
     FylerGitConflict     = { fg = palette.red },
     FylerGitDeleted      = { fg = palette.red },
@@ -85,16 +91,16 @@ function M.setup()
     FylerGitStaged       = { fg = palette.green },
     FylerGitUnstaged     = { fg = palette.orange },
     FylerGitUntracked    = { fg = palette.cyan },
-    FylerGreen           = { fg = palette.green },
-    FylerGrey            = { fg = palette.grey },
-    FylerRed             = { fg = palette.red },
-    FylerYellow          = { fg = palette.yellow },
+
     FylerWinPick         = { fg = palette.white, bg = palette.blue },
+
     -- Groups with link must be after non-linked
     FylerBorder           = { link = "FylerNormal" },
-    FylerIndentMarker     = { link = "FylerGrey" },
     FylerNormal           = { link = "Normal" },
     FylerNormalNC         = { link = "NormalNC" },
+
+    FylerIndentMarker     = { link = "FylerGrey" },
+
     FylerDiagnosticError  = { link = "DiagnosticError" },
     FylerDiagnosticWarn   = { link = "DiagnosticWarn" },
     FylerDiagnosticInfo   = { link = "DiagnosticInfo" },
