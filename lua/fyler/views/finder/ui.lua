@@ -1,5 +1,6 @@
 local Ui = require "fyler.lib.ui"
 local config = require "fyler.config"
+local diagnostic = require "fyler.lib.diagnostic"
 local git = require "fyler.lib.git"
 local util = require "fyler.lib.util"
 
@@ -110,6 +111,26 @@ M.tag = 0
 local columns = {
   git = function(context, _, onbuild)
     git.map_entries_async(context.root_dir, context.get_all_paths(), function(entries)
+      local highlights, column = {}, {}
+
+      for i, get_entry in ipairs(entries) do
+        local entry_data = context.get_entry_data(i)
+        if entry_data then
+          local hl = get_entry[2]
+          highlights[i] = hl or ((entry_data.type == "directory") and "FylerFSDirectoryName" or nil)
+        end
+        table.insert(column, Text(nil, { virt_text = { get_entry } }))
+      end
+
+      onbuild {
+        column = column,
+        highlights = highlights,
+      }
+    end)
+  end,
+
+  diagnostic = function(context, _, onbuild)
+    diagnostic.map_entries_async(context.root_dir, context.get_all_paths(), function(entries)
       local highlights, column = {}, {}
 
       for i, get_entry in ipairs(entries) do
