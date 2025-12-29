@@ -353,6 +353,16 @@ local Manager = {
   }),
 }
 
+function Manager:first_with_window()
+  for _, dirs in pairs(self.states) do
+    for _, finder in pairs(dirs) do
+      if finder.win and finder.win:has_valid_winid() then
+        return finder
+      end
+    end
+  end
+end
+
 ---@param uri string
 ---@return Finder
 function Manager:get(uri)
@@ -387,11 +397,17 @@ function Manager:each(callback)
   end
 end
 
+
 ---@param uri string|nil
 ---@param kind WinKind|nil
 function M.open(uri, kind)
   local normalized_uri = normalize_uri(uri)
   Manager:get(normalized_uri):open(normalized_uri, kind or config.values.views.finder.win.kind)
+end
+
+function M.get_current_dir()
+  local finder = Manager:first_with_window()
+  return finder and finder:getcwd() or vim.loop.cwd()
 end
 
 local function _select(opts, handler)

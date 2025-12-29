@@ -113,4 +113,20 @@ T["navigate"] = function(kind)
   eq(child.api.nvim_get_current_line():match "/%d+%s(.*)$", "test-deep-file")
 end
 
+T["get_current_dir"] = function(kind)
+  eq(child.lua_get([[require('fyler').get_current_dir()]]), vim.loop.cwd())
+
+  child.cmd(string.format([[ lua require('fyler').open { dir = '%s', kind = '%s' } ]], dir_data, kind))
+
+  vim.uv.sleep(20)
+
+  eq(child.lua_get([[require('fyler').get_current_dir()]]), dir_data)
+
+  child.type_keys "q"
+
+  vim.uv.sleep(20)
+
+  eq(child.lua_get([[require('fyler').get_current_dir()]]), vim.loop.cwd())
+end
+
 return T

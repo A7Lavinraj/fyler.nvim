@@ -46,6 +46,9 @@ Fyler can be used through lua API:
 
   -- Focuses given file path or alternate buffer
   fyler.navigate("...")
+
+  -- Returns current directory of first visible Fyler window
+  fyler.get_current_dir()
 <
 
 ------------------------------------------------------------------------------
