@@ -62,9 +62,10 @@ local util = require "fyler.lib.util"
 local config = {}
 
 local DEPRECATION_RULES = {
-  deprecated.rename("views.finder.git", "views.finder.columns.git", {
-    message = "Configuration structure reorganized under 'views.finder.columns'",
-  }),
+  deprecated.rename("views.finder.git", "views.finder.columns.git"),
+  deprecated.transform("views.finder.indentscope.marker", "views.finder.indentscope.markers", function()
+    return { { "│", "FylerIndentMarker" }, { "└", "FylerIndentMarker" } }
+  end),
 }
 
 ---@class FylerConfigGitStatus
@@ -94,7 +95,10 @@ local DEPRECATION_RULES = {
 ---@field opts FylerConfigWinpickBuiltinOpts|table<string, any>|nil
 
 ---Winpick config: either a provider name/function (shorthand) or a table with provider and opts
----@alias FylerConfigWinpick FylerConfigIntegrationsWinpickName|FylerConfigIntegrationsWinpickFn|FylerConfigWinpickTable
+---@alias FylerConfigWinpick
+---| FylerConfigIntegrationsWinpickName
+---| FylerConfigIntegrationsWinpickFn
+---| FylerConfigWinpickTable
 
 ---@class FylerConfigIntegrations
 ---@field icon FylerConfigIntegrationsIcon
@@ -247,8 +251,10 @@ function config.defaults()
         },
         indentscope = {
           enabled = true,
-          group = "FylerIndentMarker",
-          marker = "│",
+          markers = {
+            { "│", "FylerIndentMarker" },
+            { "└", "FylerIndentMarker" },
+          },
         },
         mappings = {
           ["q"] = "CloseView",

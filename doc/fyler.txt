@@ -162,8 +162,10 @@ To know more about plugin customization. visit:
           },
           indentscope = {
             enabled = true,
-            group = "FylerIndentMarker",
-            marker = "│",
+            markers = {
+              { "│", "FylerIndentMarker" },
+              { "└", "FylerIndentMarker" },
+            },
           },
           mappings = {
             ["q"] = "CloseView",

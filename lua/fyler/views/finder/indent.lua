@@ -76,8 +76,24 @@ local function compute_indent(bufnr, lnum, snapshot)
   end
 
   snapshot[lnum] = indent
-
   return indent
+end
+
+---@param snapshot table
+---@param lnum integer
+---@return integer|nil
+local function next_non_empty_indent(snapshot, lnum)
+  local next_lnum = lnum + 1
+  while true do
+    local next_indent = snapshot[next_lnum]
+    if next_indent == nil then
+      return nil
+    end
+    if next_indent > 0 then
+      return next_indent
+    end
+    next_lnum = next_lnum + 1
+  end
 end
 
 local function setup_provider()
@@ -130,19 +146,26 @@ local function setup_provider()
 
       local lnum = row + 1
       local indent = snapshot[lnum]
+      if not indent or indent < INDENT_WIDTH then
+        return
+      end
 
-      if indent and indent >= INDENT_WIDTH then
-        for col = 0, indent - INDENT_WIDTH, INDENT_WIDTH do
-          vim.api.nvim_buf_set_extmark(bufnr, M.indent_ns, row, col, {
-            virt_text = {
-              { config.values.views.finder.indentscope.marker, config.values.views.finder.indentscope.group },
-            },
-            virt_text_pos = "overlay",
-            hl_mode = "combine",
-            ephemeral = true,
-            priority = 10,
-          })
-        end
+      local next_indent = next_non_empty_indent(snapshot, lnum)
+      local markers = config.values.views.finder.indentscope.markers
+
+      for col = 0, indent - INDENT_WIDTH, INDENT_WIDTH do
+        local scope_level = col + INDENT_WIDTH
+        local is_scope_end = not next_indent or next_indent < scope_level
+
+        local marker = is_scope_end and markers[2] or markers[1]
+
+        vim.api.nvim_buf_set_extmark(bufnr, M.indent_ns, row, col, {
+          virt_text = { marker },
+          virt_text_pos = "overlay",
+          hl_mode = "combine",
+          ephemeral = true,
+          priority = 10,
+        })
       end
     end,
   })

@@ -59,8 +59,10 @@ T["configuration"] = function()
   expect_config("views.finder.icon.directory_expanded", vim.NIL)
 
   expect_config("views.finder.indentscope.enabled", true)
-  expect_config("views.finder.indentscope.group", "FylerIndentMarker")
-  expect_config("views.finder.indentscope.marker", "│")
+  expect_config("views.finder.indentscope.markers[1][1]", "│")
+  expect_config("views.finder.indentscope.markers[1][2]", "FylerIndentMarker")
+  expect_config("views.finder.indentscope.markers[2][1]", "└")
+  expect_config("views.finder.indentscope.markers[2][2]", "FylerIndentMarker")
 
   expect_config("views.finder.mappings['q']", "CloseView")
   expect_config("views.finder.mappings['<CR>']", "Select")
