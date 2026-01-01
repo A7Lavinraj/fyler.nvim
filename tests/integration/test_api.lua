@@ -6,6 +6,7 @@ local child = util.new_child_neovim()
 local eq = MiniTest.expect.equality
 
 local dir_data = util.get_dir "data"
+local dir_alt = util.get_dir "data_alt"
 
 ---@param str string
 ---@return string
@@ -44,11 +45,17 @@ local T = MiniTest.new_set {
       vim.fn.mkdir(vim.fs.joinpath(dir_data, "test-dir"))
       vim.fn.writefile({ "test-deep-file content" }, vim.fs.joinpath(dir_data, "test-dir", "test-deep-file"), "a")
       vim.fn.writefile({ "test-file content" }, vim.fs.joinpath(dir_data, "test-file"), "a")
+
+      vim.fn.mkdir(dir_alt)
+      vim.fn.mkdir(vim.fs.joinpath(dir_alt, "alt-dir"))
+      vim.fn.writefile({ "alt-deep-file" }, vim.fs.joinpath(dir_alt, "alt-dir", "alt-deep-file"), "a")
+      vim.fn.writefile({ "alt-file" }, vim.fs.joinpath(dir_alt, "alt-file"), "a")
     end,
     post_case = function()
       child.stop()
 
       vim.fn.delete(dir_data, "rf")
+      vim.fn.delete(dir_alt, "rf")
     end,
   },
 }
@@ -118,13 +125,29 @@ T["get_current_dir"] = function(kind)
 
   child.cmd(string.format([[ lua require('fyler').open { dir = '%s', kind = '%s' } ]], dir_data, kind))
 
-  vim.uv.sleep(20)
+  vim.uv.sleep(50)
+
+  eq(child.lua_get([[require('fyler').get_current_dir()]]), dir_data)
+
+  child.cmd "tabnew"
+
+  child.cmd(string.format([[ lua require('fyler').open { dir = '%s', kind = '%s' } ]], dir_alt, kind))
+
+  vim.uv.sleep(50)
+
+  eq(child.lua_get([[require('fyler').get_current_dir()]]), dir_alt)
+
+  child.cmd "tabprevious"
 
   eq(child.lua_get([[require('fyler').get_current_dir()]]), dir_data)
 
   child.type_keys "q"
 
-  vim.uv.sleep(20)
+  child.cmd "tabnext"
+
+  child.type_keys "q"
+
+  vim.uv.sleep(50)
 
   eq(child.lua_get([[require('fyler').get_current_dir()]]), vim.loop.cwd())
 end
