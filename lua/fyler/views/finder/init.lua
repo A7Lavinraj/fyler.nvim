@@ -5,11 +5,10 @@ local util = require "fyler.lib.util"
 local M = {}
 
 ---@class Finder
----@field dir string             : Home directory local to instance
----@field tab string             : Tab ID
----@field files Files            : Tree state local to instance
----@field private _tag integer   : Render generation ID
----@field private _cache integer : Cache table
+---@field dir string      : Home directory local to instance
+---@field tab string      : Tab ID
+---@field files Files     : Tree state local to instance
+---@field watcher Watcher : Tree state local to instance
 local Finder = {}
 Finder.__index = Finder
 
@@ -98,6 +97,7 @@ function Finder:open(bufname, kind)
       if bufname == "" or util.is_protocol_uri(bufname) then
         return self:dispatch_refresh({ force_update = true })
       end
+
       return M.navigate(bufname, {
         filter = { self.win.bufname },
         force_refresh = true,
@@ -116,6 +116,7 @@ function Finder:open(bufname, kind)
   }
   -- stylua: ignore end
 
+  self.watcher:enable()
   self.win:show()
 end
 
@@ -137,6 +138,7 @@ end
 
 function Finder:close()
   if self.win then
+    self.watcher:disable()
     self.win:hide()
   end
 end
@@ -151,7 +153,7 @@ function Finder:change_root(path)
   assert(path, "cannot change directory without path")
   assert(vim.fn.isdirectory(path) == 1, "cannot change to non-directory path")
 
-  self.files:_unregister_watcher(self.files.trie, true)
+  self.watcher:disable()
   self.files = require("fyler.views.finder.files").new {
     path = path,
     open = true,
@@ -388,6 +390,7 @@ function Manager:get(uri)
   local finder = self.states[tab][dir]
   if not finder then
     finder = Finder.new(dir, tab)
+    finder.watcher = require("fyler.views.finder.watcher").register(finder)
     finder.files = require("fyler.views.finder.files").new {
       path = dir,
       open = true,
@@ -509,7 +512,7 @@ M.navigate = vim.schedule_wrap(function(path, opts)
       return
     end
 
-    local target_path = require("fyler.lib.path").new(path):absolute()
+    local target_path = require("fyler.lib.path").new(path):normalize()
     local node_entry = finder:cursor_node_entry()
     if node_entry and node_entry.path == target_path then
       return

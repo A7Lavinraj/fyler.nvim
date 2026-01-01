@@ -3,14 +3,12 @@ local Path = require "fyler.lib.path"
 local Trie = require "fyler.lib.structs.trie"
 local fs = require "fyler.lib.fs"
 local util = require "fyler.lib.util"
-local watcher = require "fyler.lib.watcher"
 
 ---@class Files
 ---@field trie Trie
 ---@field manager EntryManager
 ---@field root_path string
 ---@field finder Finder
----@field git_watcher_path string|nil
 local Files = {}
 Files.__index = Files
 
@@ -20,46 +18,27 @@ function Files.new(opts)
   assert(opts.type == "directory", "Files root must be a directory")
 
   local instance = {}
-  instance.manager = Manager.new()
+  -- stylua: ignore start
+  instance.manager   = Manager.new()
+  instance.trie      = Trie.new(instance.manager:set(opts))
   instance.root_path = opts.path
-  instance.finder = opts.finder
-  instance.git_watcher_path = nil
+  instance.finder    = opts.finder
+  -- stylua: ignore end
 
-  local ref_id = instance.manager:set(opts)
-  instance.trie = Trie.new(ref_id)
+  local root_entry = instance.manager:get(instance.trie.value)
+  if root_entry.open then
+    instance.finder.watcher:start(root_entry.path)
+  end
 
   setmetatable(instance, Files)
 
-  instance:_register_watcher(instance.trie, true)
-
-  local git_path = Path.new(instance.root_path):join ".git"
-  if git_path:exists() then
-    local normalized_git_path = git_path:normalize()
-    instance.git_watcher_path = normalized_git_path
-
-    watcher.register(normalized_git_path, instance.finder.tab, function(_, filename)
-      if filename == "index" then
-        instance.finder:dispatch_refresh { force_update = true }
-      end
-    end)
-  end
-
   return instance
-end
-
-function Files:destroy()
-  self:_unregister_watcher(self.trie, true)
-  if self.git_watcher_path then
-    watcher.unregister(self.git_watcher_path, self.finder.tab)
-    self.git_watcher_path = nil
-  end
 end
 
 ---@param path string
 ---@return string[]|nil
 function Files:path_to_segments(path)
   local normalized = Path.new(path):normalize()
-
   if not vim.startswith(normalized, self.root_path) then
     return nil
   end
@@ -79,8 +58,7 @@ end
 ---@param ref_id integer
 ---@return Entry
 function Files:node_entry(ref_id)
-  assert(ref_id, "cannot find node without ref_id")
-  return self.manager:get(ref_id)
+  return self.manager:get(assert(ref_id, "cannot find node without ref_id"))
 end
 
 ---@param ref_id integer
@@ -94,52 +72,6 @@ function Files:find_node_by_ref_id(ref_id)
   return self.trie:find(segments)
 end
 
----@param node Trie
----@param register_self boolean
-function Files:_register_watcher(node, register_self)
-  local entry = self.manager:get(node.value)
-  if entry.path:match "%.git" then
-    return
-  end
-
-  if register_self and entry:is_directory() then
-    watcher.register(entry.path, self.finder.tab, function()
-      self.finder:dispatch_refresh { force_update = true }
-    end)
-  end
-
-  for _, child in pairs(node.children) do
-    local child_entry = self.manager:get(child.value)
-    if child_entry:is_directory() and child_entry.open then
-      watcher.register(child_entry.path, self.finder.tab, function()
-        self.finder:dispatch_refresh { force_update = true }
-      end)
-      self:_register_watcher(child, false)
-    end
-  end
-end
-
----@param node Trie
----@param unregister_self boolean
-function Files:_unregister_watcher(node, unregister_self)
-  local entry = self.manager:get(node.value)
-  if entry.path:match "%.git" then
-    return
-  end
-
-  if unregister_self and entry:is_directory() then
-    watcher.unregister(entry.path, self.finder.tab)
-  end
-
-  for _, child in pairs(node.children) do
-    local child_entry = self.manager:get(child.value)
-    if child_entry:is_directory() then
-      watcher.unregister(child_entry.path, self.finder.tab)
-      self:_unregister_watcher(child, false)
-    end
-  end
-end
-
 ---@param ref_id integer
 function Files:expand_node(ref_id)
   local entry = self.manager:get(ref_id)
@@ -150,11 +82,7 @@ function Files:expand_node(ref_id)
   end
 
   entry.open = true
-
-  local node = self:find_node_by_ref_id(ref_id)
-  if node then
-    self:_register_watcher(node, true)
-  end
+  self.finder.watcher:start(entry.path)
 
   return self
 end
@@ -165,15 +93,13 @@ function Files:collapse_node(ref_id)
   assert(entry, "cannot locate entry with given ref_id")
 
   if not entry:is_directory() then
-    return
+    return self
   end
 
   entry.open = false
+  self.finder.watcher:start(entry.path)
 
-  local node = self:find_node_by_ref_id(ref_id)
-  if node then
-    self:_unregister_watcher(node, true)
-  end
+  return self
 end
 
 ---@param ref_id integer
@@ -210,7 +136,7 @@ function Files:_collapse_recursive(node)
   local entry = self.manager:get(node.value)
   if entry:is_directory() and entry.open then
     entry.open = false
-    watcher.unregister(entry.path, self.finder.tab)
+    self.finder.watcher:stop(entry.path)
   end
 
   for _, child in pairs(node.children) do
@@ -287,7 +213,7 @@ function Files:_update(node, onupdate)
       if not entry_paths[name] then
         local child_entry = self.manager:get(child_node.value)
         if child_entry:is_directory() then
-          self:_unregister_watcher(child_node, true)
+          self.finder.watcher:stop(child_entry.path)
         end
         node.children[name] = nil
       end
@@ -301,7 +227,7 @@ function Files:_update(node, onupdate)
 
         local child_entry = self.manager:get(child_ref_id)
         if child_entry:is_directory() and child_entry.open then
-          self:_register_watcher(child_node, true)
+          self.finder.watcher:start(child_entry.path)
         end
       end
     end
@@ -454,6 +380,7 @@ function Files:_parse_lines(lines, root_entry)
       path = Path.new(parent.node.path):join(name):normalize(),
       children = {},
     }
+
     parents:push { node = node, indentation = indent_level }
     parent.node.type = "directory"
     table.insert(parent.node.children, node)
