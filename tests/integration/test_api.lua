@@ -120,14 +120,24 @@ T["navigate"] = function(kind)
   eq(child.api.nvim_get_current_line():match "/%d+%s(.*)$", "test-deep-file")
 end
 
+T["open with URI"] = function()
+  child.cmd(string.format([[ edit fyler://%s ]], dir_data))
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  eq(parse_name(lines[1]), "test-dir")
+  eq(parse_name(lines[2]), "test-file")
+end
+
 T["get_current_dir"] = function(kind)
-  eq(child.lua_get([[require('fyler').get_current_dir()]]), vim.loop.cwd())
+  eq(child.lua_get [[require('fyler').get_current_dir()]], vim.loop.cwd())
 
   child.cmd(string.format([[ lua require('fyler').open { dir = '%s', kind = '%s' } ]], dir_data, kind))
 
   vim.uv.sleep(50)
 
-  eq(child.lua_get([[require('fyler').get_current_dir()]]), dir_data)
+  eq(child.lua_get [[require('fyler').get_current_dir()]], dir_data)
 
   child.cmd "tabnew"
 
@@ -135,11 +145,11 @@ T["get_current_dir"] = function(kind)
 
   vim.uv.sleep(50)
 
-  eq(child.lua_get([[require('fyler').get_current_dir()]]), dir_alt)
+  eq(child.lua_get [[require('fyler').get_current_dir()]], dir_alt)
 
   child.cmd "tabprevious"
 
-  eq(child.lua_get([[require('fyler').get_current_dir()]]), dir_data)
+  eq(child.lua_get [[require('fyler').get_current_dir()]], dir_data)
 
   child.type_keys "q"
 
@@ -149,7 +159,7 @@ T["get_current_dir"] = function(kind)
 
   vim.uv.sleep(50)
 
-  eq(child.lua_get([[require('fyler').get_current_dir()]]), vim.loop.cwd())
+  eq(child.lua_get [[require('fyler').get_current_dir()]], vim.loop.cwd())
 end
 
 return T

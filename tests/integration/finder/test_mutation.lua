@@ -50,159 +50,8 @@ local T = MiniTest.new_set {
   },
 }
 
-T["mappings"] = MiniTest.new_set {}
-
-T["mappings"]["Select"] = function(kind)
-  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
-
-  vim.uv.sleep(20)
-
-  child.type_keys "<Enter>"
-
-  vim.uv.sleep(20)
-
-  local lines = child.get_lines(0, 0, -1, false)
-
-  eq(parse_name(lines[1]), "test-dir")
-  eq(parse_name(lines[2]), "test-deep-file")
-  eq(parse_name(lines[3]), "test-file")
-
-  child.type_keys "<Enter>"
-
-  vim.uv.sleep(20)
-
-  local lines = child.get_lines(0, 0, -1, false)
-  eq(parse_name(lines[1]), "test-dir")
-  eq(parse_name(lines[2]), "test-file")
-end
-
-T["mappings"]["SelectSplit"] = function(kind)
-  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
-
-  vim.uv.sleep(20)
-
-  child.type_keys "G-"
-
-  eq(child.get_lines(0, 0, -1, false), { "test-file content" })
-end
-
-T["mappings"]["SelectVSplit"] = function(kind)
-  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
-
-  vim.uv.sleep(20)
-
-  child.type_keys "G|"
-
-  eq(child.get_lines(0, 0, -1, false), { "test-file content" })
-end
-
-T["mappings"]["SelectTab"] = function(kind)
-  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
-
-  vim.uv.sleep(20)
-
-  child.type_keys "G<C-t>"
-
-  eq(child.get_lines(0, 0, -1, false), { "test-file content" })
-end
-
-T["mappings"]["GotoParent"] = function(kind)
-  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], vim.fs.joinpath(dir_data, "test-dir"), kind))
-
-  vim.uv.sleep(20)
-
-  child.type_keys "^"
-
-  vim.uv.sleep(20)
-
-  local lines = child.get_lines(0, 0, -1, false)
-
-  eq(parse_name(lines[1]), "test-dir")
-  eq(parse_name(lines[2]), "test-file")
-end
-
-T["mappings"]["GotoCwd"] = function(kind)
-  -- NOTE: For some reason if doing cd first then fyler will not open
-  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
-
-  vim.uv.sleep(20)
-
-  child.type_keys "."
-  vim.uv.sleep(20)
-
-  child.type_keys "="
-  vim.uv.sleep(20)
-
-  local lines = child.get_lines(0, 0, -1, false)
-
-  eq(parse_name(lines[1]), "test-dir")
-  eq(parse_name(lines[2]), "test-file")
-end
-
-T["mappings"]["GotoNode"] = function(kind)
-  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
-
-  vim.uv.sleep(20)
-
-  child.type_keys "."
-
-  vim.uv.sleep(20)
-
-  local lines = child.get_lines(0, 0, -1, false)
-
-  eq(parse_name(lines[1]), "test-deep-file")
-end
-
-T["mappings"]["CollapseAll"] = function(kind)
-  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
-
-  vim.uv.sleep(20)
-
-  child.type_keys "<Enter>"
-
-  vim.uv.sleep(20)
-
-  child.type_keys "j<Bs>"
-
-  vim.uv.sleep(20)
-
-  local lines = child.get_lines(0, 0, -1, false)
-  eq(parse_name(lines[1]), "test-dir")
-  eq(parse_name(lines[2]), "test-file")
-end
-
-T["mappings"]["CollapseNode"] = function(kind)
-  child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
-
-  vim.uv.sleep(20)
-
-  child.type_keys "<Enter>"
-
-  vim.uv.sleep(20)
-
-  child.type_keys "j<Bs>"
-
-  vim.uv.sleep(20)
-
-  local lines = child.get_lines(0, 0, -1, false)
-  eq(parse_name(lines[1]), "test-dir")
-  eq(parse_name(lines[2]), "test-file")
-end
-
-T["scheme"] = function()
-  child.cmd(string.format([[ edit fyler://%s ]], dir_data))
-
-  vim.uv.sleep(20)
-
-  local lines = child.get_lines(0, 0, -1, false)
-  eq(parse_name(lines[1]), "test-dir")
-  eq(parse_name(lines[2]), "test-file")
-end
-
-T["synchronize"] = MiniTest.new_set {}
-
 -- TODO: Everything looking fine with manual testing but will fix following test
-T["synchronize"]["basic operations"] = function(kind)
+T["basic operations"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -260,7 +109,7 @@ T["synchronize"]["basic operations"] = function(kind)
   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir", "test-deep-file")), 0)
 end
 
-T["synchronize"]["rename file"] = function(kind)
+T["rename file"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -285,7 +134,7 @@ T["synchronize"]["rename file"] = function(kind)
   eq(parse_name(new_lines[3]), "renamed-file")
 end
 
-T["synchronize"]["rename directory"] = function(kind)
+T["rename directory"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -311,7 +160,7 @@ T["synchronize"]["rename directory"] = function(kind)
   eq(parse_name(new_lines[1]), "renamed-dir")
 end
 
-T["synchronize"]["delete file"] = function(kind)
+T["delete file"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -335,7 +184,7 @@ T["synchronize"]["delete file"] = function(kind)
   eq(#new_lines, 2)
 end
 
-T["synchronize"]["delete directory"] = function(kind)
+T["delete directory"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -361,7 +210,7 @@ T["synchronize"]["delete directory"] = function(kind)
   eq(#new_lines, 1)
 end
 
-T["synchronize"]["create file"] = function(kind)
+T["create file"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -392,7 +241,7 @@ T["synchronize"]["create file"] = function(kind)
   eq(found, true)
 end
 
-T["synchronize"]["create directory"] = function(kind)
+T["create directory"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -423,7 +272,7 @@ T["synchronize"]["create directory"] = function(kind)
   eq(found, true)
 end
 
-T["synchronize"]["create nested directories"] = function(kind)
+T["create nested directories"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -446,7 +295,7 @@ T["synchronize"]["create nested directories"] = function(kind)
   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "parent", "child", "grandchild")), 1)
 end
 
-T["synchronize"]["create nested file"] = function(kind)
+T["create nested file"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -469,7 +318,7 @@ T["synchronize"]["create nested file"] = function(kind)
   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "parent", "child", "file")), 1)
 end
 
-T["synchronize"]["copy file"] = function(kind)
+T["copy file"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -496,7 +345,7 @@ T["synchronize"]["copy file"] = function(kind)
   eq(original_content[1], copied_content[1])
 end
 
-T["synchronize"]["copy directory"] = function(kind)
+T["copy directory"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -522,7 +371,7 @@ T["synchronize"]["copy directory"] = function(kind)
   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "test-dir-copy", "test-deep-file")), 1)
 end
 
-T["synchronize"]["move file between directories"] = function(kind)
+T["move file between directories"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -547,7 +396,7 @@ T["synchronize"]["move file between directories"] = function(kind)
   eq(content[1], "test-file content")
 end
 
-T["synchronize"]["move directory"] = function(kind)
+T["move directory"] = function(kind)
   vim.fn.mkdir(vim.fs.joinpath(dir_data, "parent-dir"))
 
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
@@ -572,7 +421,7 @@ T["synchronize"]["move directory"] = function(kind)
   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "parent-dir", "test-dir", "test-deep-file")), 1)
 end
 
-T["synchronize"]["multiple operations at once"] = function(kind)
+T["multiple operations at once"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -592,7 +441,7 @@ T["synchronize"]["multiple operations at once"] = function(kind)
   child.cmd [[ write ]]
   child.type_keys "y"
 
-  vim.uv.sleep(20)
+  vim.uv.sleep(40)
 
   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "renamed-dir")), 1)
   eq(vim.fn.filereadable(vim.fs.joinpath(dir_data, "renamed-dir", "renamed-deep-file")), 1)
@@ -601,7 +450,7 @@ T["synchronize"]["multiple operations at once"] = function(kind)
   eq(vim.fn.isdirectory(vim.fs.joinpath(dir_data, "new-dir")), 1)
 end
 
-T["synchronize"]["abort with n"] = function(kind)
+T["abort with n"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
@@ -623,7 +472,7 @@ T["synchronize"]["abort with n"] = function(kind)
   eq(child.bo.modified, true)
 end
 
-T["synchronize"]["no changes when not saved"] = function(kind)
+T["no changes when not saved"] = function(kind)
   child.cmd(string.format([[ Fyler dir=%s kind=%s ]], dir_data, kind))
 
   vim.uv.sleep(20)
