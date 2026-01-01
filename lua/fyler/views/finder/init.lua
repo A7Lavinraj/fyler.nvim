@@ -423,7 +423,6 @@ function M.open(uri, kind)
 end
 
 function M.get_current_dir()
-<<<<<<< HEAD
   local current_tab = vim.api.nvim_get_current_tabpage()
   local current_win = vim.api.nvim_get_current_win()
 
@@ -449,10 +448,6 @@ function M.get_current_dir()
   end
 
   return vim.loop.cwd()
-=======
-  local finder = Manager:first_with_window()
-  return finder and finder:getcwd() or vim.loop.cwd()
->>>>>>> 1a0915a (feat: implement get_current_dir api)
 end
 
 local function _select(opts, handler)
