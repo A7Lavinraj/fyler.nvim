@@ -3,9 +3,9 @@ local util = require "fyler.lib.util"
 
 local M = {}
 
+---@param self Finder
 function M.n_close(self)
   return function()
-    self.files:destroy()
     self:close()
   end
 end
