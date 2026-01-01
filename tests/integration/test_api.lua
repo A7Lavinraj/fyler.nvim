@@ -113,4 +113,14 @@ T["navigate"] = function(kind)
   eq(child.api.nvim_get_current_line():match "/%d+%s(.*)$", "test-deep-file")
 end
 
+T["open with URI"] = function()
+  child.cmd(string.format([[ edit fyler://%s ]], dir_data))
+
+  vim.uv.sleep(20)
+
+  local lines = child.get_lines(0, 0, -1, false)
+  eq(parse_name(lines[1]), "test-dir")
+  eq(parse_name(lines[2]), "test-file")
+end
+
 return T
