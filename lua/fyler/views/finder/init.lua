@@ -355,6 +355,30 @@ local Manager = {
   }),
 }
 
+function Manager:find_by_win(winid)
+  if not util.is_valid_winid(winid) then
+    return
+  end
+
+  for tab, dirs in pairs(self.states) do
+    for dir, finder in pairs(dirs) do
+      if finder.win and finder.win:has_valid_winid() and finder.win.winid == winid then
+        return finder, dir, tab
+      end
+    end
+  end
+end
+
+function Manager:first_visible()
+  for tab, dirs in pairs(self.states) do
+    for dir, finder in pairs(dirs) do
+      if finder.win and finder.win:has_valid_winid() then
+        return finder, dir, tab
+      end
+    end
+  end
+end
+
 ---@param uri string
 ---@return Finder
 function Manager:get(uri)
@@ -390,11 +414,40 @@ function Manager:each(callback)
   end
 end
 
+
 ---@param uri string|nil
 ---@param kind WinKind|nil
 function M.open(uri, kind)
   local normalized_uri = normalize_uri(uri)
   Manager:get(normalized_uri):open(normalized_uri, kind or config.values.views.finder.win.kind)
+end
+
+function M.get_current_dir()
+  local current_tab = vim.api.nvim_get_current_tabpage()
+  local current_win = vim.api.nvim_get_current_win()
+
+  -- 1. Prefer the finder attached to the current window.
+  local finder = Manager:find_by_win(current_win)
+  if finder and finder.win and finder.win:has_valid_winid() then
+    return finder:getcwd()
+  end
+
+  -- 2. Fallback to any finder visible in the current tab.
+  local wins_in_tab = vim.api.nvim_tabpage_list_wins(current_tab)
+  for _, winid in ipairs(wins_in_tab) do
+    local tab_finder = Manager:find_by_win(winid)
+    if tab_finder and tab_finder.win and tab_finder.win:has_valid_winid() then
+      return tab_finder:getcwd()
+    end
+  end
+
+  -- 3. As a last resort, return the directory of the first visible finder.
+  local first_visible = Manager:first_visible()
+  if first_visible and first_visible.win and first_visible.win:has_valid_winid() then
+    return first_visible:getcwd()
+  end
+
+  return vim.loop.cwd()
 end
 
 local function _select(opts, handler)

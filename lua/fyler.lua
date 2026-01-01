@@ -91,6 +91,9 @@ function M.setup(opts)
   M.navigate = function(path)
     finder.navigate(path, { force_refresh = true })
   end
+
+  -- Fyler.API: Returns directory of first visible Fyler instance
+  M.get_current_dir = finder.get_current_dir
 end
 
 return M
