@@ -1,59 +1,61 @@
 local async = require "fyler.lib.async"
 local config = require "fyler.config"
+local helper = require "fyler.views.finder.helper"
 local util = require "fyler.lib.util"
 
 local M = {}
 
 ---@class Finder
----@field dir string      : Home directory local to instance
----@field tab string      : Tab ID
----@field files Files     : Tree state local to instance
----@field watcher Watcher : Tree state local to instance
+---@field uri string
+---@field files Files
+---@field watcher Watcher
 local Finder = {}
 Finder.__index = Finder
 
----@param dir string   : Home directory local to instance
----@param tab string   : Tab ID
-function Finder.new(dir, tab)
-  local instance = {}
-  instance._tag = 0
-  instance._cache = {}
-
-  instance.dir = dir
-  instance.tab = tab
-  return setmetatable(instance, Finder)
+function Finder.new(uri)
+  return setmetatable({ uri = uri }, Finder)
 end
 
----@param name string : Name of corresponding available action
-function Finder:_action(name)
+---@param name string
+function Finder:action(name)
   local action = require("fyler.views.finder.actions")[name]
   return assert(action, string.format("action %s is not available", name))(self)
 end
 
--- Converts string to function mapping into an action
 ---@param user_mappings table<string, function>
 ---@return table<string, function>
-function Finder:_action_mod(user_mappings)
+function Finder:action_wrap(user_mappings)
   local actions = {}
   for keys, fn in pairs(user_mappings) do
     actions[keys] = function()
       fn(self)
     end
   end
-
   return actions
 end
 
--- Action caller
----@param name string : Name of available action
----@param ... any     : Optional action arguments
-function Finder:exec_action(name, ...)
-  self:_action(name)(...)
+---@param name string
+---@param ... any
+function Finder:action_call(name, ...)
+  self:action(name)(...)
 end
 
----@param bufname string : Buffer name from which finder should load or create new
----@param kind WinKind   : Kind of the finder window
-function Finder:open(bufname, kind)
+---@deprecated
+function Finder:exec_action(...)
+  vim.notify "'exec_action' is deprecated use 'call_action'"
+  self:action_call(...)
+end
+
+---@param kind WinKind|nil
+function Finder:isopen(kind)
+  return self.win
+    and (kind and (self.win.kind == kind) or true)
+    and self.win:has_valid_winid()
+    and self.win:has_valid_bufnr()
+end
+
+---@param kind WinKind
+function Finder:open(kind)
   local indent = require "fyler.views.finder.indent"
 
   local rev_maps = config.rev_maps "finder"
@@ -68,7 +70,7 @@ function Finder:open(bufname, kind)
       [{"CursorMoved","CursorMovedI"}] = function() self:clamp_cursor() end,
     },
     border        = view_cfg.win.border,
-    bufname       = bufname,
+    bufname       = self.uri,
     bottom        = view_cfg.win.bottom,
     buf_opts      = view_cfg.win.buf_opts,
     enter         = true,
@@ -78,29 +80,38 @@ function Finder:open(bufname, kind)
     kind          = kind,
     left          = view_cfg.win.left,
     mappings      = {
-      [rev_maps["CloseView"]]    = self:_action "n_close",
-      [rev_maps["CollapseAll"]]  = self:_action "n_collapse_all",
-      [rev_maps["CollapseNode"]] = self:_action "n_collapse_node",
-      [rev_maps["GotoCwd"]]      = self:_action "n_goto_cwd",
-      [rev_maps["GotoNode"]]     = self:_action "n_goto_node",
-      [rev_maps["GotoParent"]]   = self:_action "n_goto_parent",
-      [rev_maps["Select"]]       = self:_action "n_select",
-      [rev_maps["SelectSplit"]]  = self:_action "n_select_split",
-      [rev_maps["SelectTab"]]    = self:_action "n_select_tab",
-      [rev_maps["SelectVSplit"]] = self:_action "n_select_v_split",
+      [rev_maps["CloseView"]]    = self:action "n_close",
+      [rev_maps["CollapseAll"]]  = self:action "n_collapse_all",
+      [rev_maps["CollapseNode"]] = self:action "n_collapse_node",
+      [rev_maps["GotoCwd"]]      = self:action "n_goto_cwd",
+      [rev_maps["GotoNode"]]     = self:action "n_goto_node",
+      [rev_maps["GotoParent"]]   = self:action "n_goto_parent",
+      [rev_maps["Select"]]       = self:action "n_select",
+      [rev_maps["SelectSplit"]]  = self:action "n_select_split",
+      [rev_maps["SelectTab"]]    = self:action "n_select_tab",
+      [rev_maps["SelectVSplit"]] = self:action "n_select_v_split",
     },
     mappings_opts = view_cfg.mappings_opts,
-    on_show       = function() indent.attach(self.win) end,
-    on_hide       = function() indent.detach(self.win) end,
+    on_show       = function()
+      self.watcher:enable()
+      indent.attach(self.win)
+    end,
+    on_hide       = function()
+      self.watcher:disable()
+      indent.detach(self.win)
+    end,
     render        = function()
       local bufname = vim.fn.bufname("#")
-      if bufname == "" or util.is_protocol_uri(bufname) then
+      if bufname == "" then
         return self:dispatch_refresh({ force_update = true })
       end
-
-      return M.navigate(bufname, {
-        filter = { self.win.bufname },
-        force_refresh = true,
+      if helper.is_protocol_uri(bufname) then
+        return self:dispatch_refresh({ force_update = true })
+      end
+      return M.navigate( bufname,
+        { filter = { self.win.bufname },
+        force_update = true,
+        force_refresh = true
       })
     end,
     right         = view_cfg.win.right,
@@ -110,14 +121,18 @@ function Finder:open(bufname, kind)
     user_autocmds = {
       ["DispatchRefresh"] = function() self:dispatch_refresh() end,
     },
-    user_mappings = self:_action_mod(usr_maps),
+    user_mappings = self:action_wrap(usr_maps),
     width         = view_cfg.win.width,
     win_opts      = view_cfg.win.win_opts,
   }
   -- stylua: ignore end
 
-  self.watcher:enable()
   self.win:show()
+end
+
+---@return string
+function Finder:getrwd()
+  return util.select_n(1, helper.parse_protocol_uri(self.uri))
 end
 
 ---@return string
@@ -128,7 +143,7 @@ end
 function Finder:cursor_node_entry()
   local entry
   vim.api.nvim_win_call(self.win.winid, function()
-    local ref_id = util.parse_ref_id(vim.api.nvim_get_current_line())
+    local ref_id = helper.parse_ref_id(vim.api.nvim_get_current_line())
     if ref_id then
       entry = vim.deepcopy(self.files:node_entry(ref_id))
     end
@@ -138,7 +153,6 @@ end
 
 function Finder:close()
   if self.win then
-    self.watcher:disable()
     self.win:hide()
   end
 end
@@ -153,7 +167,7 @@ function Finder:change_root(path)
   assert(path, "cannot change directory without path")
   assert(vim.fn.isdirectory(path) == 1, "cannot change to non-directory path")
 
-  self.watcher:disable()
+  self.watcher:disable(true)
   self.files = require("fyler.views.finder.files").new {
     path = path,
     open = true,
@@ -196,7 +210,7 @@ end
 
 function Finder:clamp_cursor()
   local cur = vim.api.nvim_get_current_line()
-  local ref_id = util.parse_ref_id(cur)
+  local ref_id = helper.parse_ref_id(cur)
   if not ref_id then
     return
   end
@@ -216,57 +230,51 @@ function Finder:clamp_cursor()
   end
 end
 
-local function wrapper(module)
-  return setmetatable({}, {
+local mutation_handlers = (function()
+  local async_fs = setmetatable({}, {
     __index = function(_, k)
       return async.wrap(function(...)
-        module[k](...)
+        require("fyler.lib.fs")[k](...)
       end)
     end,
   })
-end
 
-local wfs, wtrash = wrapper(require "fyler.lib.fs"), wrapper(require "fyler.lib.trash")
-local function get_operation_handlers()
   return {
     create = function(op)
-      wfs.create(op.path, op.entry_type == "directory")
+      async_fs.create(op.path, op.entry_type == "directory")
       return op.path
     end,
+
     delete = function(op)
-      if config.values.views.finder.delete_to_trash then
-        wtrash.dump(op.path)
-      else
-        wfs.delete(op.path)
-      end
-      return nil
+      (config.values.views.finder.delete_to_trash and async_fs.trash or async_fs.delete)(op.path)
     end,
+
     move = function(op)
-      wfs.move(op.src, op.dst)
+      async_fs.move(op.src, op.dst)
       return op.dst
     end,
+
     copy = function(op)
-      wfs.copy(op.src, op.dst)
+      async_fs.copy(op.src, op.dst)
       return op.dst
     end,
   }
-end
+end)()
 
 local function run_mutation(operations)
-  local MUTATION_TEXT_FORMAT = "Mutating (%d)/(%d)"
-  local handlers = get_operation_handlers()
-  local spinner = require("fyler.lib.spinner").new(string.format(MUTATION_TEXT_FORMAT, 0, #operations))
+  local mutation_text_format = "Mutating (%d/%d)"
+  local spinner = require("fyler.lib.spinner").new(string.format(mutation_text_format, 0, #operations))
   local last_focusable_operation = nil
 
   spinner:start()
 
   for i, operation in ipairs(operations) do
-    local handler = handlers[operation.type]
+    local handler = mutation_handlers[operation.type]
     if handler then
       last_focusable_operation = handler(operation) or last_focusable_operation
     end
 
-    spinner:set_text(string.format(MUTATION_TEXT_FORMAT, i, #operations))
+    spinner:set_text(string.format(mutation_text_format, i, #operations))
   end
 
   spinner:stop()
@@ -325,115 +333,79 @@ function Finder:dispatch_mutation()
   end)
 end
 
+local instances = {}
+
 ---@param uri string|nil
----@return string
-local function normalize_uri(uri)
-  local fs = require "fyler.lib.fs"
-  local dir, tab = nil, nil
-  if not uri or uri == "" then
-    dir = fs.cwd()
-    tab = tostring(vim.api.nvim_get_current_tabpage())
-  elseif util.is_protocol_uri(uri) then
-    dir, tab = util.parse_protocol_uri(uri)
-    dir = dir or fs.cwd()
-    tab = tab or tostring(vim.api.nvim_get_current_tabpage())
-  else
-    dir = uri
-    tab = tostring(vim.api.nvim_get_current_tabpage())
-  end
-
-  return util.build_protocol_uri(dir, tab)
-end
-
-local Manager = {
-  states = setmetatable({}, {
-    __index = function(t, k)
-      local v = {}
-      rawset(t, k, v)
-      return v
-    end,
-  }),
-}
-
----@param uri string
 ---@return Finder
-function Manager:get(uri)
-  local dir, tab = util.parse_protocol_uri(uri)
-  assert(dir, "Directory is required")
-  assert(tab, "Tab is required")
-  assert(config, "Config is required")
+function M.instance(uri)
+  local Path = require "fyler.lib.path"
 
-  local finder = self.states[tab][dir]
-  if not finder then
-    finder = Finder.new(dir, tab)
-    finder.watcher = require("fyler.views.finder.watcher").register(finder)
-    finder.files = require("fyler.views.finder.files").new {
-      path = dir,
-      open = true,
-      type = "directory",
-      name = vim.fn.fnamemodify(dir, ":t"),
-      finder = finder,
-    }
+  uri = assert(helper.normalize_uri(uri), "Faulty URI")
 
-    self.states[tab][dir] = finder
+  local finder = instances[uri]
+  if finder then
+    return finder
   end
 
-  return finder
+  local path = helper.parse_protocol_uri(uri) --[[@as string]]
+
+  finder = Finder.new(uri)
+  finder.watcher = require("fyler.views.finder.watcher").new(finder)
+  finder.files = require("fyler.views.finder.files").new {
+    open = true,
+    path = path,
+    type = "directory",
+    name = Path.new(path):parent():normalize(),
+    finder = finder,
+  }
+
+  instances[uri] = finder
+  return instances[uri]
 end
 
----@param callback fun(finder: Finder, dir: string, tab: number)
-function Manager:each(callback)
-  for tab, dirs in pairs(self.states) do
-    for dir, finder in pairs(dirs) do
-      callback(finder, dir, tab)
-    end
-  end
+---@param fn fun(uri: string)
+function M.each_finder(fn)
+  util.tbl_each(instances, fn)
 end
 
 ---@param uri string|nil
 ---@param kind WinKind|nil
 function M.open(uri, kind)
-  local normalized_uri = normalize_uri(uri)
-  Manager:get(normalized_uri):open(normalized_uri, kind or config.values.views.finder.win.kind)
+  M.instance(uri):open(kind or config.values.views.finder.win.kind)
 end
 
 local function _select(opts, handler)
   if opts.filter then
     util.tbl_each(opts.filter, function(uri)
-      if util.is_protocol_uri(uri) then
+      if helper.is_protocol_uri(uri) then
         handler(uri)
       end
     end)
   else
-    Manager:each(function(_, dir, tab)
-      handler(util.build_protocol_uri(dir, tab))
-    end)
+    M.each_finder(handler)
   end
 end
 
 M.close = vim.schedule_wrap(function(opts)
-  opts = opts or {}
-  _select(opts, function(uri)
-    Manager:get(uri):close()
+  _select(opts or {}, function(uri)
+    M.instance(uri):close()
   end)
 end)
 
 ---@param uri string|nil
 ---@param kind WinKind|nil
 M.toggle = vim.schedule_wrap(function(uri, kind)
-  local normalized_uri = normalize_uri(uri)
-  local finder = Manager:get(normalized_uri)
-  if finder.win and finder.win:has_valid_bufnr() then
+  local finder = M.instance(uri)
+  if finder:isopen(kind) then
     finder:close()
   else
-    finder:open(normalized_uri, kind or config.values.views.finder.win.kind)
+    finder:open(kind or config.values.views.finder.win.kind)
   end
 end)
 
 M.focus = vim.schedule_wrap(function(opts)
-  opts = opts or {}
-  _select(opts, function(uri)
-    Manager:get(uri).win:focus()
+  _select(opts or {}, function(uri)
+    M.instance(uri).win:focus()
   end)
 end)
 
@@ -441,12 +413,12 @@ end)
 ---@param path string|nil
 M.navigate = vim.schedule_wrap(function(path, opts)
   opts = opts or {}
-  if not path then
+  if not path or path == "" then
     return
   end
 
   local set_cursor = vim.schedule_wrap(function(finder, ref_id)
-    if finder.win:has_valid_winid() and ref_id then
+    if finder:isopen() and ref_id then
       vim.api.nvim_win_call(finder.win.winid, function()
         vim.fn.search(string.format("/%05d ", ref_id))
       end)
@@ -454,8 +426,8 @@ M.navigate = vim.schedule_wrap(function(path, opts)
   end)
 
   _select(opts, function(uri)
-    local finder = Manager:get(uri)
-    if not (finder and finder.win:has_valid_winid() and finder.win:has_valid_bufnr()) then
+    local finder = M.instance(uri)
+    if not finder:isopen() then
       return
     end
 

@@ -2,7 +2,7 @@ local config = require "fyler.config"
 local util = require "fyler.lib.util"
 
 ---@class Watcher
----@field paths table<string, { fs_event: uv.uv_fs_event_t, running: boolean }>
+---@field paths table<string, { fsevent: uv.uv_fs_event_t, running: boolean }>
 ---@field finder Finder
 local Watcher = {}
 Watcher.__index = Watcher
@@ -11,17 +11,19 @@ local instance = {}
 
 ---@return Watcher
 function Watcher.new(finder)
-  local instance = {
-    finder = finder,
-    paths = {},
-  }
-
-  return setmetatable(instance, Watcher)
+  return setmetatable({ finder = finder, paths = {} }, Watcher)
 end
 
 ---@param dir string
 function Watcher:start(dir)
-  assert(vim.fn.isdirectory(dir) == 1, "Path must be provided to watch")
+  if not dir then
+    return
+  end
+
+  if vim.fn.isdirectory(dir) == 0 then
+    self.paths[dir] = nil
+    return
+  end
 
   if not config.values.views.finder.watcher.enabled then
     return self
@@ -29,7 +31,7 @@ function Watcher:start(dir)
 
   if not self.paths[dir] then
     self.paths[dir] = {
-      fs_event = assert(vim.uv.new_fs_event()),
+      fsevent = assert(vim.uv.new_fs_event()),
       running = false,
     }
   end
@@ -38,7 +40,7 @@ function Watcher:start(dir)
     return self
   end
 
-  self.paths[dir].fs_event:start(dir, {}, function(err, filename)
+  self.paths[dir].fsevent:start(dir, {}, function(err, filename)
     if err then
       return
     end
@@ -63,47 +65,52 @@ function Watcher:start(dir)
   end)
 
   self.paths[dir].running = true
-
-  return self
 end
 
 function Watcher:enable()
   for dir in pairs(self.paths) do
     self:start(dir)
   end
-
-  return self
 end
 
 function Watcher:stop(dir)
-  assert(vim.fn.isdirectory(dir) == 1, "Path must be provided to watch")
+  if not dir then
+    return
+  end
+
+  if vim.fn.isdirectory(dir) == 0 then
+    self.paths[dir] = nil
+    return
+  end
 
   if not config.values.views.finder.watcher.enabled then
     return self
   end
 
   if self.paths[dir].running then
-    self.paths[dir].fs_event:stop()
+    self.paths[dir].fsevent:stop()
   end
 
   self.paths[dir].running = false
-
-  return self
 end
 
-function Watcher:disable()
+---@param should_clean boolean|nil
+function Watcher:disable(should_clean)
   for dir in pairs(self.paths) do
     self:stop(dir)
   end
-  return self
+
+  if should_clean then
+    self.paths = {}
+  end
 end
 
 function Watcher.register(finder)
-  local key = string.format("fyler_watcher://%s?tab=%s", finder.dir, finder.tab)
-  if not instance[key] then
-    instance[key] = Watcher.new(finder)
+  local uri = finder.uri
+  if not instance[uri] then
+    instance[uri] = Watcher.new(finder)
   end
-  return instance[key]
+  return instance[uri]
 end
 
 return Watcher

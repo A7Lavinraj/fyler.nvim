@@ -2,6 +2,7 @@ local Manager = require "fyler.views.finder.files.manager"
 local Path = require "fyler.lib.path"
 local Trie = require "fyler.lib.structs.trie"
 local fs = require "fyler.lib.fs"
+local helper = require "fyler.views.finder.helper"
 local util = require "fyler.lib.util"
 
 ---@class Files
@@ -15,15 +16,13 @@ Files.__index = Files
 ---@param opts table
 ---@return Files
 function Files.new(opts)
-  assert(opts.type == "directory", "Files root must be a directory")
+  assert(vim.fn.isdirectory(opts.path) == 1, "Files root must be a directory")
 
   local instance = {}
-  -- stylua: ignore start
-  instance.manager   = Manager.new()
-  instance.trie      = Trie.new(instance.manager:set(opts))
+  instance.manager = Manager.new()
+  instance.trie = Trie.new(instance.manager:set(opts))
   instance.root_path = opts.path
-  instance.finder    = opts.finder
-  -- stylua: ignore end
+  instance.finder = opts.finder
 
   local root_entry = instance.manager:get(instance.trie.value)
   if root_entry.open then
@@ -46,10 +45,6 @@ function Files:path_to_segments(path)
   local relative = normalized:sub(#self.root_path + 1)
   if relative:sub(1, 1) == "/" then
     relative = relative:sub(2)
-  end
-
-  if relative == "" then
-    return {}
   end
 
   return util.filter_bl(vim.split(relative, "/"))
@@ -97,7 +92,7 @@ function Files:collapse_node(ref_id)
   end
 
   entry.open = false
-  self.finder.watcher:start(entry.path)
+  self.finder.watcher:stop(entry.path)
 
   return self
 end
@@ -362,9 +357,9 @@ function Files:_parse_lines(lines, root_entry)
   parents:push { node = parsed_tree_root, indentation = -1 }
 
   for _, line in ipairs(lines) do
-    local name = util.parse_name(line)
-    local ref_id = util.parse_ref_id(line)
-    local indent_level = util.parse_indent_level(line)
+    local name = helper.parse_name(line)
+    local ref_id = helper.parse_ref_id(line)
+    local indent_level = helper.parse_indent_level(line)
 
     while true do
       local parent = parents:top()

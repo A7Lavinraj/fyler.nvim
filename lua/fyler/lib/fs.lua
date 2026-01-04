@@ -419,6 +419,12 @@ function commands.copy(src, dst, callback)
   commands.cp(Path.new(src):normalize(), Path.new(dst):normalize(), { r = true }, callback)
 end
 
+---@param src string
+---@param callback function
+function commands.trash(src, callback)
+  require("fyler.lib.trash").dump(src, callback)
+end
+
 local function builder(fn)
   local meta = {
     __call = function(t, ...)

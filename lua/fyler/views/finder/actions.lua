@@ -1,5 +1,5 @@
 local config = require "fyler.config"
-local util = require "fyler.lib.util"
+local helper = require "fyler.views.finder.helper"
 
 local M = {}
 
@@ -20,7 +20,7 @@ end
 local function _select(self, opener, opts)
   opts = vim.tbl_extend("force", { winpick = true }, opts or {})
 
-  local ref_id = util.parse_ref_id(vim.api.nvim_get_current_line())
+  local ref_id = helper.parse_ref_id(vim.api.nvim_get_current_line())
   if not ref_id then
     return
   end
@@ -54,7 +54,7 @@ local function _select(self, opener, opts)
     or config.values.views.finder.close_on_select
 
   if should_close then
-    self:exec_action "n_close"
+    self:action_call "n_close"
     open_in_window(vim.api.nvim_get_current_win())
   elseif opts.winpick then
     -- For split variants, we should pick windows
@@ -108,25 +108,27 @@ end
 function M.n_goto_parent(self)
   return function()
     local parent_dir = vim.fn.fnamemodify(self:getcwd(), ":h")
-    if parent_dir ~= self.dir then
-      self:change_root(parent_dir):dispatch_refresh { force_update = true }
+    if parent_dir == self:getrwd() then
+      return
     end
+    self:change_root(parent_dir):dispatch_refresh { force_update = true }
   end
 end
 
 ---@param self Finder
 function M.n_goto_cwd(self)
   return function()
-    if self.dir ~= self:getcwd() then
-      self:change_root(self.dir):dispatch_refresh { force_update = true }
+    if self:getrwd() == self:getcwd() then
+      return
     end
+    self:change_root(self:getrwd()):dispatch_refresh { force_update = true }
   end
 end
 
 ---@param self Finder
 function M.n_goto_node(self)
   return function()
-    local ref_id = util.parse_ref_id(vim.api.nvim_get_current_line())
+    local ref_id = helper.parse_ref_id(vim.api.nvim_get_current_line())
     if not ref_id then
       return
     end
@@ -139,7 +141,7 @@ function M.n_goto_node(self)
     if entry:is_directory() then
       self:change_root(entry.path):dispatch_refresh { force_update = true }
     else
-      self:exec_action "n_select"
+      self:action_call "n_select"
     end
   end
 end
@@ -147,7 +149,7 @@ end
 ---@param self Finder
 function M.n_collapse_node(self)
   return function()
-    local ref_id = util.parse_ref_id(vim.api.nvim_get_current_line())
+    local ref_id = helper.parse_ref_id(vim.api.nvim_get_current_line())
     if not ref_id then
       return
     end
@@ -179,7 +181,7 @@ function M.n_collapse_node(self)
 
     self:dispatch_refresh {
       onrender = function()
-        if self.win:has_valid_winid() then
+        if self:isopen() then
           vim.fn.search(string.format("/%05d", focus_ref_id))
         end
       end,

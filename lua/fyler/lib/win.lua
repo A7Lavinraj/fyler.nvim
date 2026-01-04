@@ -48,12 +48,9 @@ Win.__index = Win
 
 ---@return Win
 function Win.new(opts)
-  opts = opts or {}
-
-  local instance = util.tbl_merge_keep(opts, { kind = "replace" })
+  local instance = util.tbl_merge_keep(opts or {}, { kind = "replace" })
   instance.ui = require("fyler.lib.ui").new(instance)
   setmetatable(instance, Win)
-
   return instance
 end
 
@@ -277,10 +274,6 @@ function Win:config()
 end
 
 function Win:show()
-  if self:has_valid_winid() then
-    return
-  end
-
   local win_config = self:config()
   local current_bufnr = vim.api.nvim_get_current_buf()
   if win_config.split and (win_config.split:match "_all$" or win_config.split:match "_most$") then

@@ -31,10 +31,7 @@ local T = MiniTest.new_set {
     pre_case = function()
       child.setup()
       child.set_size(18, 70)
-      child.load("fyler", {
-        integrations = { icon = "none" },
-        views = { finder = { git_status = { enabled = false } } },
-      })
+      child.load("fyler", { views = { finder = { default_explorer = true } } })
 
       child.o.laststatus = 3
       child.o.showtabline = 0
@@ -108,7 +105,7 @@ T["navigate"] = function(kind)
     string.format([[ lua require('fyler').navigate '%s' ]], vim.fs.joinpath(dir_data, "test-dir/test-deep-file"))
   )
 
-  vim.uv.sleep(20)
+  vim.uv.sleep(50)
 
   eq(child.api.nvim_get_current_line():match "/%d+%s(.*)$", "test-deep-file")
 end
@@ -119,6 +116,7 @@ T["open with URI"] = function()
   vim.uv.sleep(20)
 
   local lines = child.get_lines(0, 0, -1, false)
+
   eq(parse_name(lines[1]), "test-dir")
   eq(parse_name(lines[2]), "test-file")
 end
