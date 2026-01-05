@@ -23,12 +23,12 @@ function M.setup(config)
       pattern = "*",
       desc = "Hijack directory buffers for fyler",
       callback = function(args)
-        if util.get_buf_option(args.buf, "filetype") == "fyler" then
-          return
-        end
         local bufname = vim.api.nvim_buf_get_name(args.buf)
         if vim.fn.isdirectory(bufname) == 1 or helper.is_protocol_uri(bufname) then
           vim.schedule(function()
+            if util.get_buf_option(args.buf, "filetype") == "fyler" then
+              return
+            end
             if vim.api.nvim_buf_is_valid(args.buf) then
               vim.api.nvim_buf_delete(args.buf, { force = true })
             end
@@ -69,9 +69,11 @@ function M.setup(config)
       group = augroup,
       desc = "Track current focused buffer in finder",
       callback = function(args)
-        if not (helper.is_protocol_uri(args.file) or util.get_buf_option(args.buf, "filetype") == "fyler") then
-          fyler.navigate(args.file)
-        end
+        vim.schedule(function()
+          if not (helper.is_protocol_uri(args.file) or util.get_buf_option(args.buf, "filetype") == "fyler") then
+            fyler.navigate(args.file)
+          end
+        end)
       end,
     })
   end
