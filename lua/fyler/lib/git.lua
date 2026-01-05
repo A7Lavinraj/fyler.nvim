@@ -90,7 +90,7 @@ function M.build_modified_lookup_for(dir)
   for _, line in process:stdout_iter() do
     if line ~= "" then
       local symbol = line:sub(1, 2)
-      local path = Path.new(dir):join(line:sub(4)):normalize()
+      local path = Path.new(dir):join(line:sub(4)):os_path()
       lookup[path] = symbol
     end
   end
@@ -114,7 +114,7 @@ function M.build_modified_lookup_for_async(dir, onbuild)
         for _, line in process:stdout_iter() do
           if line ~= "" then
             local symbol = line:sub(1, 2)
-            local path = Path.new(dir):join(line:sub(4)):normalize()
+            local path = Path.new(dir):join(line:sub(4)):os_path()
             lookup[path] = symbol
           end
         end

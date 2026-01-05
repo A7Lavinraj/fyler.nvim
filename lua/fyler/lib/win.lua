@@ -295,14 +295,6 @@ function Win:show()
       self.bufnr = vim.fn.bufnr(self.bufname)
     end
 
-    if not self.bufnr or self.bufnr == -1 then
-      self.bufnr = vim.api.nvim_create_buf(false, true)
-
-      if self.bufname then
-        vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
-      end
-    end
-
     vim.api.nvim_win_set_buf(self.winid, self.bufnr)
 
     if not self.enter then
@@ -318,10 +310,6 @@ function Win:show()
     if not self.bufnr or self.bufnr == -1 then
       vim.api.nvim_command "enew"
       self.bufnr = vim.api.nvim_get_current_buf()
-
-      if self.bufname then
-        vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
-      end
     else
       vim.api.nvim_win_set_buf(self.winid, self.bufnr)
     end
@@ -329,13 +317,8 @@ function Win:show()
     if self.bufname then
       self.bufnr = vim.fn.bufnr(self.bufname)
     end
-
     if not self.bufnr or self.bufnr == -1 then
       self.bufnr = vim.api.nvim_create_buf(false, true)
-
-      if self.bufname then
-        vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
-      end
     end
 
     self.winid = vim.api.nvim_open_win(self.bufnr, self.enter, win_config)
@@ -366,6 +349,10 @@ function Win:show()
 
   for option, value in pairs(self.buf_opts or {}) do
     util.set_buf_option(self.bufnr, option, value)
+  end
+
+  if self.bufname then
+    vim.api.nvim_buf_set_name(self.bufnr, self.bufname)
   end
 
   for event, callback in pairs(self.autocmds or {}) do

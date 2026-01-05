@@ -16,7 +16,7 @@ Files.__index = Files
 ---@param opts table
 ---@return Files
 function Files.new(opts)
-  assert(vim.fn.isdirectory(opts.path) == 1, "Files root must be a directory")
+  assert(Path.new(opts.path):is_directory(), "Files root must be a directory")
 
   local instance = {}
   instance.manager = Manager.new()
@@ -37,12 +37,12 @@ end
 ---@param path string
 ---@return string[]|nil
 function Files:path_to_segments(path)
-  local normalized = Path.new(path):normalize()
-  if not vim.startswith(normalized, self.root_path) then
+  local posix_path = Path.new(path):posix_path()
+  if not vim.startswith(posix_path, self.root_path) then
     return nil
   end
 
-  local relative = normalized:sub(#self.root_path + 1)
+  local relative = posix_path:sub(#self.root_path + 1)
   if relative:sub(1, 1) == "/" then
     relative = relative:sub(2)
   end
@@ -144,7 +144,7 @@ end
 function Files:add_child(parent_ref_id, opts)
   local parent_entry = self.manager:get(parent_ref_id)
 
-  opts.path = Path.new(parent_entry.path):join(opts.name):normalize()
+  opts.path = Path.new(parent_entry.path):join(opts.name):posix_path()
 
   local child_ref_id = self.manager:set(opts)
 
@@ -194,7 +194,9 @@ function Files:_update(node, onupdate)
     return onupdate(nil)
   end
 
-  fs.ls(node_entry.path, function(err, entries)
+  fs.ls({
+    path = Path.new(node_entry.path):os_path(),
+  }, function(err, entries)
     if err or not entries then
       return onupdate(err)
     end
@@ -372,7 +374,7 @@ function Files:_parse_lines(lines, root_entry)
     local parent = parents:top()
     local node = {
       ref_id = ref_id,
-      path = Path.new(parent.node.path):join(name):normalize(),
+      path = Path.new(parent.node.path):join(name):posix_path(),
       children = {},
     }
 
@@ -388,8 +390,8 @@ end
 ---@return table[]
 function Files:diff_with_lines(lines)
   return require("fyler.views.finder.files.resolver")
-    .new(self.root_path)
-    :resolve(self, self:_parse_lines(lines, self.manager:get(self.trie.value)))
+    .new(self)
+    :resolve(self:_parse_lines(lines, self.manager:get(self.trie.value)))
 end
 
 return Files

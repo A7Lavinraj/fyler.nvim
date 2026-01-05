@@ -1,11 +1,10 @@
 local Path = require "fyler.lib.path"
 local M = {}
 
----@param path string
----@param callback function
-function M.dump(path, callback)
-  local _path = Path.new(path)
-  local abspath = _path:normalize()
+---@param opts {path: string, callback: function}
+function M.dump(opts)
+  local _path = Path.new(opts.path)
+  local abspath = _path:os_path()
 
   local ps_script = string.format(
     [[
@@ -48,9 +47,9 @@ function M.dump(path, callback)
   proc:spawn_async(function(code)
     vim.schedule(function()
       if code == 0 then
-        callback(nil)
+        opts.callback(nil)
       else
-        callback("failed to move to recycle bin: " .. (proc:err() or ""))
+        opts.callback("failed to move to recycle bin: " .. (proc:err() or ""))
       end
     end)
   end)
