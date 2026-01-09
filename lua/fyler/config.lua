@@ -208,10 +208,7 @@ function config.defaults()
     hooks = {},
     integrations = {
       icon = "mini_icons",
-      winpick = {
-        provider = "none",
-        opts = {},
-      },
+      winpick = "none",
     },
     views = {
       finder = {

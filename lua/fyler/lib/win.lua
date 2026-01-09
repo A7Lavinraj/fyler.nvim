@@ -295,6 +295,10 @@ function Win:show()
       self.bufnr = vim.fn.bufnr(self.bufname)
     end
 
+    if not self.bufnr or self.bufnr == -1 then
+      self.bufnr = vim.api.nvim_create_buf(false, true)
+    end
+
     vim.api.nvim_win_set_buf(self.winid, self.bufnr)
 
     if not self.enter then
@@ -317,6 +321,7 @@ function Win:show()
     if self.bufname then
       self.bufnr = vim.fn.bufnr(self.bufname)
     end
+
     if not self.bufnr or self.bufnr == -1 then
       self.bufnr = vim.api.nvim_create_buf(false, true)
     end

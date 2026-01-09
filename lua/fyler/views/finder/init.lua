@@ -231,7 +231,7 @@ end
 
 local function run_mutation(operations)
   local async_handler = async.wrap(function(operation, _next)
-    assert(require("fyler.lib.fs")[operation.type])(operation, _next)
+    assert(require("fyler.lib.fs")[operation.type], "Unknown operation")(operation, _next)
     return operation.path or operation.dst
   end)
 

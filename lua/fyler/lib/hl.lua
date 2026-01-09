@@ -95,9 +95,9 @@ function M.setup()
     FylerWinPick         = { fg = palette.white, bg = palette.blue },
 
     -- Groups with link must be after non-linked
-    FylerBorder           = { link = "FylerNormal" },
     FylerNormal           = { link = "Normal" },
     FylerNormalNC         = { link = "NormalNC" },
+    FylerBorder           = { link = "FylerNormal" },
 
     FylerIndentMarker     = { link = "FylerGrey" },
 
