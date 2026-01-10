@@ -3,7 +3,7 @@ local util = require "tests.util"
 local eq = util.eq
 local nv = util.new_neovim()
 
-local T = util.new_test_set {
+local T = util.new_set {
   hooks = {
     pre_case = function()
       nv.setup()

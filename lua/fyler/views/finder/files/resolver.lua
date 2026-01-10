@@ -1,5 +1,6 @@
 local Path = require "fyler.lib.path"
 local Trie = require "fyler.lib.structs.trie"
+local helper = require "fyler.views.finder.helper"
 local util = require "fyler.lib.util"
 
 ---@class ResolverNode
@@ -12,6 +13,7 @@ local util = require "fyler.lib.util"
 ---@class Resolver
 ---@field trie Trie
 ---@field files Files
+---@field parsed_buffer table
 ---@field old_ref_to_location table<integer, string>
 ---@field new_ref_to_location table<integer, string[]>
 ---@field processed_paths table<string, boolean>
@@ -34,6 +36,44 @@ function Resolver.new(files)
   setmetatable(instance, Resolver)
 
   return instance
+end
+
+---@return table
+function Resolver:parse_and_save_buffer()
+  local lines = util.filter_bl(vim.api.nvim_buf_get_lines(self.files.finder.win.bufnr, 0, -1, false))
+  local root_entry = self.files.manager:get(self.files.trie.value)
+  local parsed_tree_root = { ref_id = root_entry.ref_id, path = root_entry.path, children = {} }
+  local parents = require("fyler.lib.structs.stack").new()
+  parents:push { node = parsed_tree_root, indentation = -1 }
+
+  for _, line in ipairs(lines) do
+    local name = helper.parse_name(line)
+    local ref_id = helper.parse_ref_id(line)
+    local indent_level = helper.parse_indent_level(line)
+
+    while true do
+      local parent = parents:top()
+      if not (parent.indentation >= indent_level and parents:size() > 1) then
+        break
+      end
+      parents:pop()
+    end
+
+    local parent = parents:top()
+    local node = {
+      ref_id = ref_id,
+      path = Path.new(parent.node.path):join(name):posix_path(),
+      children = {},
+    }
+
+    parents:push { node = node, indentation = indent_level }
+    parent.node.type = "directory"
+    table.insert(parent.node.children, node)
+  end
+
+  self.parsed_buffer = parsed_tree_root
+
+  return self
 end
 
 ---@param path string
@@ -97,10 +137,11 @@ function Resolver:mark_operation(path, op_type, value, entry_type)
       table.insert(node.value[op_type], Path.new(value):posix_path())
     end
   end
+
+  return self
 end
 
----@param parsed_tree table
-function Resolver:mark_creates_and_save(parsed_tree)
+function Resolver:mark_and_save_creates()
   local function traverse(node)
     if node.ref_id then
       if not self.new_ref_to_location[node.ref_id] then
@@ -127,10 +168,12 @@ function Resolver:mark_creates_and_save(parsed_tree)
     end
   end
 
-  traverse(parsed_tree)
+  traverse(self.parsed_buffer)
+
+  return self
 end
 
-function Resolver:mark_deletes_and_save()
+function Resolver:mark_and_save_deletes()
   local function traverse(node)
     local entry = self.files.manager:get(node.value)
     local posix_path = Path.new(entry.link or entry.path):posix_path()
@@ -149,6 +192,8 @@ function Resolver:mark_deletes_and_save()
   end
 
   traverse(self.files.trie)
+
+  return self
 end
 
 function Resolver:mark_moves_and_copies()
@@ -197,55 +242,13 @@ function Resolver:mark_moves_and_copies()
   end
 
   traverse(self.files.trie)
+
+  return self
 end
 
--- function Resolver:mark_moves_and_copies()
---   ---@param fn fun(ref_id: integer, paths: string[])
---   local function foreach_ref_id_and_paths(fn)
---     for ref_id, paths in pairs(self.new_ref_to_location) do
---       fn(ref_id, paths)
---     end
---   end
---
---   foreach_ref_id_and_paths(function(ref_id, paths)
---     local old_path = self.old_ref_to_location[ref_id]
---     if not old_path then
---       return
---     end
---
---     if #paths == 1 then
---       if paths[1] == old_path then
---         return
---       end
---
---       return self:mark_operation(old_path, "move", paths[1])
---     end
---
---     if util.if_any(paths, function(path)
---       return path == old_path
---     end) then
---       util.tbl_each(paths, function(dest_path)
---         if dest_path == old_path then
---           return
---         end
---
---         self:mark_operation(old_path, "copy", dest_path)
---       end)
---     else
---       self:mark_operation(old_path, "move", paths[1])
---       for i = 2, #paths do
---         self:mark_operation(old_path, "copy", paths[i])
---       end
---     end
---   end)
--- end
-
----@param parsed_tree table
 ---@return table[]
-function Resolver:resolve(parsed_tree)
-  self:mark_creates_and_save(parsed_tree)
-  self:mark_deletes_and_save()
-  self:mark_moves_and_copies()
+function Resolver:resolve()
+  self:parse_and_save_buffer():mark_and_save_creates():mark_and_save_deletes():mark_moves_and_copies()
 
   local operations = {}
   self:traverse_and_collect(self.trie, operations, {})

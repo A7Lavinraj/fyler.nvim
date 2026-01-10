@@ -112,7 +112,7 @@ function Finder:open(kind)
       return M.navigate( bufname, { filter = { self.win.bufname }, force_update = true })
     end,
     right         = view_cfg.win.right,
-    title         = string.format(" %s ", self:getcwd()),
+    title         = string.format("%s", self:getcwd()),
     title_pos     = view_cfg.win.title_pos,
     top           = view_cfg.win.top,
     user_autocmds = {
@@ -136,7 +136,7 @@ end
 
 ---@return string
 function Finder:getcwd()
-  return assert(self.files, "files is require").root_path
+  return Path.new(assert(self.files, "files is require").root_path):os_path()
 end
 
 function Finder:cursor_node_entry()
@@ -297,7 +297,7 @@ end
 
 function Finder:dispatch_mutation()
   async.void(function()
-    local operations = self.files:diff_with_lines(vim.api.nvim_buf_get_lines(self.win.bufnr, 0, -1, false))
+    local operations = self.files:diff_with_buffer()
     if vim.tbl_isempty(operations) then
       return self:dispatch_refresh()
     end

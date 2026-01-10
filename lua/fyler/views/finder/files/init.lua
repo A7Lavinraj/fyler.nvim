@@ -2,7 +2,6 @@ local Manager = require "fyler.views.finder.files.manager"
 local Path = require "fyler.lib.path"
 local Trie = require "fyler.lib.structs.trie"
 local fs = require "fyler.lib.fs"
-local helper = require "fyler.views.finder.helper"
 local util = require "fyler.lib.util"
 
 ---@class Files
@@ -349,49 +348,9 @@ function Files:_totable(node)
   return table_node
 end
 
----@param lines string[]
----@param root_entry Entry
----@return table
-function Files:_parse_lines(lines, root_entry)
-  lines = util.filter_bl(lines)
-  local parsed_tree_root = { ref_id = root_entry.ref_id, path = root_entry.path, children = {} }
-  local parents = require("fyler.lib.structs.stack").new()
-  parents:push { node = parsed_tree_root, indentation = -1 }
-
-  for _, line in ipairs(lines) do
-    local name = helper.parse_name(line)
-    local ref_id = helper.parse_ref_id(line)
-    local indent_level = helper.parse_indent_level(line)
-
-    while true do
-      local parent = parents:top()
-      if not (parent.indentation >= indent_level and parents:size() > 1) then
-        break
-      end
-      parents:pop()
-    end
-
-    local parent = parents:top()
-    local node = {
-      ref_id = ref_id,
-      path = Path.new(parent.node.path):join(name):posix_path(),
-      children = {},
-    }
-
-    parents:push { node = node, indentation = indent_level }
-    parent.node.type = "directory"
-    table.insert(parent.node.children, node)
-  end
-
-  return parsed_tree_root
-end
-
----@param lines string[]
 ---@return table[]
-function Files:diff_with_lines(lines)
-  return require("fyler.views.finder.files.resolver")
-    .new(self)
-    :resolve(self:_parse_lines(lines, self.manager:get(self.trie.value)))
+function Files:diff_with_buffer()
+  return require("fyler.views.finder.files.resolver").new(self):resolve()
 end
 
 return Files

@@ -2,23 +2,12 @@ local MiniTest = require "mini.test"
 
 local M = {}
 
----@param name "repo"|"data"
-function M.get_dir(name)
-  return vim.fn.fnamemodify(
-    vim.fs.joinpath(vim.env.FYLER_TEMP_DIR or vim.fs.joinpath(vim.uv.cwd(), ".temp"), name),
-    ":p"
-  )
-end
-
--- stylua: ignore start
-M.eq           = MiniTest.expect.equality
-M.mt           = MiniTest.new_expectation(
-  'string matching',
-  function(str, pattern) return str:find(pattern) ~= nil end,
-  function(str, pattern) return string.format('Pattern: %s\nObserved string: %s', vim.inspect(pattern), str) end
-)
-M.new_test_set = MiniTest.new_set
--- stylua: ignore end
+M.eq = MiniTest.expect.equality
+M.mt = MiniTest.new_expectation("string matching", function(str, pattern)
+  return str:find(pattern) ~= nil
+end, function(str, pattern)
+  return string.format("Pattern: %s\nObserved string: %s", vim.inspect(pattern), str)
+end)
 
 ---@param fn fun(path: string)
 function M.tmp_ctx(fn)
@@ -46,7 +35,7 @@ function M.tmp_ctx(fn)
     item_config("b-file", "file"),
   }
 
-  local root = M.get_dir "data"
+  local root = dofile("bin/setup_deps.lua").get_dir "data"
 
   local function write_file(path)
     vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
@@ -78,16 +67,14 @@ function M.tmp_ctx(fn)
   fn(root)
 end
 
+M.new_set = MiniTest.new_set
+
 function M.new_neovim()
   local child = MiniTest.new_child_neovim()
 
   child.setup = function()
     child.restart { "-u", "tests/minit.lua" }
-    child.set_size(15, 40)
-    child.bo.readonly = true
-    child.o.statusline = " "
-    child.o.laststatus = 0
-    child.o.cmdheight = 0
+    child.set_size(20, 80)
   end
 
   child.mload = function(name, config)
@@ -113,6 +100,13 @@ function M.new_neovim()
   end
 
   child.wait = vim.uv.sleep
+
+  child.forward_lua = function(fun_str)
+    local lua_cmd = fun_str .. "(...)"
+    return function(...)
+      return child.lua_get(lua_cmd, { ... })
+    end
+  end
 
   child.expect_screenshot = function(opts, path)
     opts = opts or {}
