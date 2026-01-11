@@ -9,7 +9,7 @@ local T = util.new_set({
   },
 })
 
-T["With WinKind"] = util.new_set({
+T["Each WinKind"] = util.new_set({
   parametrize = {
     { "float" },
     { "replace" },
@@ -24,7 +24,7 @@ T["With WinKind"] = util.new_set({
   },
 })
 
-T["With WinKind"]["Open"] = function(kind)
+T["Each WinKind"]["Open"] = function(kind)
   util.tmp_ctx(function(path)
     nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
     nv.wait(50)
@@ -32,7 +32,7 @@ T["With WinKind"]["Open"] = function(kind)
   end)
 end
 
-T["With WinKind"]["Toggle"] = function(kind)
+T["Each WinKind"]["Toggle"] = function(kind)
   util.tmp_ctx(function(path)
     nv.forward_lua("require('fyler').toggle")({ dir = path, kind = kind })
     nv.wait(50)
@@ -43,7 +43,7 @@ T["With WinKind"]["Toggle"] = function(kind)
   end)
 end
 
-T["With WinKind"]["Navigate"] = function(kind)
+T["Each WinKind"]["Navigate"] = function(kind)
   util.tmp_ctx(function(path)
     nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
     nv.wait(50)

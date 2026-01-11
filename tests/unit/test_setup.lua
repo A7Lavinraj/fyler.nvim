@@ -1,6 +1,7 @@
 local util = require("tests.util")
 
 local eq = util.eq
+local mp = util.mp
 local nv = util.new_neovim()
 
 local T = util.new_set({
@@ -11,7 +12,7 @@ local T = util.new_set({
 })
 
 T["Side Effects"] = function()
-  local validate_hl_group = function(name, ref) util.mt(nv.cmd_capture("hi " .. name), ref) end
+  local validate_hl_group = function(name, ref) util.mp(nv.cmd_capture("hi " .. name), ref) end
 
   eq(nv.fn.hlexists("FylerBlue"), 1)
   eq(nv.fn.hlexists("FylerGreen"), 1)
@@ -152,6 +153,26 @@ T["Setup Config"] = function()
   expect_config("views.finder.win.win_opts.signcolumn", "no")
   expect_config("views.finder.win.win_opts.winhighlight", "Normal:FylerNormal,NormalNC:FylerNormalNC")
   expect_config("views.finder.win.win_opts.wrap", false)
+end
+
+T["Respects User Config"] = function()
+  nv.module_unload("fyler")
+  nv.module_load(
+    "fyler",
+    { views = {
+      finder = {
+        mappings = {
+          ["gc"] = "CloseView",
+        },
+      },
+    } }
+  )
+  eq(nv.lua_get("require('fyler.config').values.views.finder.mappings['gc']"), "CloseView")
+end
+
+T["Ensures Colors"] = function()
+  nv.cmd("colorscheme default")
+  mp(nv.cmd_capture("hi FylerBorder"), "links to FylerNormal")
 end
 
 return T
