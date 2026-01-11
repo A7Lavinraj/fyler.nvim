@@ -78,7 +78,7 @@ function M.new_neovim()
   end
 
   child.mload = function(name, config)
-    child.lua(([[require('%s').setup(...)]]):format(name), { config })
+    child.lua(([[require('%s').setup(...)]]):format(name), config)
   end
 
   child.set_size = function(lines, columns)

@@ -19,7 +19,13 @@ function Files.new(opts)
 
   local instance = {}
   instance.manager = Manager.new()
-  instance.trie = Trie.new(instance.manager:set(opts))
+  instance.trie = Trie.new(instance.manager:set {
+    name = opts.name,
+    open = opts.open,
+    path = opts.path,
+    type = "directory",
+  })
+
   instance.root_path = opts.path
   instance.finder = opts.finder
 

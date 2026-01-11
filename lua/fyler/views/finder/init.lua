@@ -170,9 +170,8 @@ function Finder:change_root(path)
   self.files = require("fyler.views.finder.files").new {
     path = path,
     open = true,
-    type = "directory",
-    name = vim.fn.fnamemodify(path, ":t"),
     finder = self,
+    name = vim.fn.fnamemodify(path, ":t"),
   }
 
   if self.win then
@@ -327,7 +326,6 @@ function M.instance(uri)
   finder.files = require("fyler.views.finder.files").new {
     open = true,
     path = path,
-    type = "directory",
     name = Path.new(path):parent():posix_path(),
     finder = finder,
   }
