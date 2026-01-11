@@ -12,11 +12,7 @@ end)
 ---@param fn fun(path: string)
 function M.tmp_ctx(fn)
   local function item_config(name, type, children)
-    return {
-      name = name,
-      type = type,
-      children = children,
-    }
+    return { name = name, type = type, children = children }
   end
 
   local fake_data = {
@@ -73,12 +69,8 @@ function M.new_neovim()
   local child = MiniTest.new_child_neovim()
 
   child.setup = function()
-    child.restart { "-u", "tests/minit.lua" }
+    child.restart { "-u", "tests/minit.lua", "-c", "lua require('fyler').setup()" }
     child.set_size(20, 80)
-  end
-
-  child.mload = function(name, config)
-    child.lua(([[require('%s').setup(...)]]):format(name), config)
   end
 
   child.set_size = function(lines, columns)

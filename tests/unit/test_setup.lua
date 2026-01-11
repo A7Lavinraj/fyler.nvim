@@ -5,10 +5,7 @@ local nv = util.new_neovim()
 
 local T = util.new_set {
   hooks = {
-    pre_case = function()
-      nv.setup()
-      nv.mload "fyler"
-    end,
+    pre_case = nv.setup,
     post_case = nv.stop,
   },
 }
