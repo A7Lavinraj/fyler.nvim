@@ -39,7 +39,7 @@ function M.setup(config)
 
     vim.api.nvim_create_autocmd({ "BufReadCmd", "SessionLoadPost" }, {
       group = augroup,
-      pattern = "fyler://*",
+      pattern = "fyler://%d+//*",
       desc = "Open fyler protocol URIs",
       callback = function(args)
         local bufname = vim.api.nvim_buf_get_name(args.buf)

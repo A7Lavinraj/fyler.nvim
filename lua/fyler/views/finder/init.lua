@@ -124,7 +124,7 @@ function Finder:open(kind)
 end
 
 ---@return string
-function Finder:getrwd() return util.select_n(1, helper.parse_protocol_uri(self.uri)) end
+function Finder:getrwd() return util.select_n(2, helper.parse_protocol_uri(self.uri)) end
 
 ---@return string
 function Finder:getcwd() return Path.new(assert(self.files, "files is require").root_path):os_path() end
@@ -282,7 +282,8 @@ function M.instance(uri)
   local finder = instances[uri]
   if finder then return finder end
 
-  local path = helper.parse_protocol_uri(uri) --[[@as string]]
+  local _, path = helper.parse_protocol_uri(uri) --[[@as string]]
+  assert(Path.new(path):is_directory(), "Path is not a valid directory")
 
   finder = Finder.new(uri)
   finder.watcher = require("fyler.views.finder.watcher").new(finder)

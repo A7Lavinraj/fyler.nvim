@@ -2,12 +2,12 @@ local M = {}
 
 ---@param uri string|nil
 ---@return boolean
-function M.is_protocol_uri(uri) return uri and (not not uri:match("^fyler://")) or false end
+function M.is_protocol_uri(uri) return uri and (not not uri:match("^fyler://%d+")) or false end
 
 ---@param dir string
 ---@param tab string|integer
 ---@return string
-function M.build_protocol_uri(dir, tab) return string.format("fyler://%s?tab=%s", dir, tostring(tab)) end
+function M.build_protocol_uri(tab, dir) return string.format("fyler://%s//%s", tostring(tab), dir) end
 
 ---@param uri string|nil
 ---@return string
@@ -18,25 +18,20 @@ function M.normalize_uri(uri)
     dir = fs.cwd()
     tab = tostring(vim.api.nvim_get_current_tabpage())
   elseif M.is_protocol_uri(uri) then
-    dir, tab = M.parse_protocol_uri(uri)
+    tab, dir = M.parse_protocol_uri(uri)
     dir = dir or fs.cwd()
     tab = tab or tostring(vim.api.nvim_get_current_tabpage())
   else
     dir = uri
     tab = tostring(vim.api.nvim_get_current_tabpage())
   end
-
-  return M.build_protocol_uri(require("fyler.lib.path").new(dir):posix_path(), tab)
+  return M.build_protocol_uri(tab, require("fyler.lib.path").new(dir):posix_path())
 end
 
 ---@param uri string
 ---@return string|nil, string|nil
 function M.parse_protocol_uri(uri)
-  if M.is_protocol_uri(uri) then
-    local path_with_query = uri:gsub("fyler://", "")
-    local path, tab = path_with_query:match("^(.*)%?tab=(.*)")
-    return path or path_with_query, tab
-  end
+  if M.is_protocol_uri(uri) then return string.match(uri, "^fyler://(%d+)//(.*)$") end
 end
 
 ---@param str string
