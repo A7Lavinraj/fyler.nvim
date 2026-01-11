@@ -1,6 +1,8 @@
 local util = require("tests.util")
 
 local nv = util.new_neovim()
+local eq = util.eq
+local mp = util.mp
 
 local T = util.new_set({
   hooks = {
@@ -40,6 +42,25 @@ T["Each WinKind Can"]["Open With Arguments"] = function(kind)
     nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
     nv.wait(50)
     nv.expect_screenshot()
+  end)
+end
+
+T["Each WinKind Can"]["Open And Handles Sudden Undo"] = function(kind)
+  util.tmp_ctx(function(path)
+    nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
+    nv.wait(50)
+    nv.type_keys("u")
+    eq(#nv.get_lines(0, 0, -1, false) > 1, true)
+    eq(nv.cmd_capture("1messages"), "Already at oldest change")
+  end)
+end
+
+T["Each WinKind Can"]["Open And Jump To Current File"] = function(kind)
+  util.tmp_ctx(function(path)
+    nv.cmd("edit " .. vim.fs.joinpath(path, "b-file"))
+    nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
+    nv.wait(50)
+    mp(nv.api.nvim_get_current_line(), "b-file")
   end)
 end
 
