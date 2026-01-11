@@ -9,7 +9,7 @@ local T = util.new_set({
   },
 })
 
-T["Each WinKind"] = util.new_set({
+T["Each WinKind Can"] = util.new_set({
   parametrize = {
     { "float" },
     { "replace" },
@@ -24,7 +24,18 @@ T["Each WinKind"] = util.new_set({
   },
 })
 
-T["Each WinKind"]["Open"] = function(kind)
+T["Each WinKind Can"]["Open Without Arguments"] = function(kind)
+  util.tmp_ctx(function(path)
+    nv.module_unload("fyler")
+    nv.module_load("fyler", { views = { finder = { win = { kind = kind } } } })
+    nv.fn.chdir(path)
+    nv.forward_lua("require('fyler').open")()
+    nv.wait(50)
+    nv.dbg_screen()
+  end)
+end
+
+T["Each WinKind Can"]["Open With Arguments"] = function(kind)
   util.tmp_ctx(function(path)
     nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
     nv.wait(50)
@@ -32,7 +43,7 @@ T["Each WinKind"]["Open"] = function(kind)
   end)
 end
 
-T["Each WinKind"]["Toggle"] = function(kind)
+T["Each WinKind Can"]["Toggle With Arguments"] = function(kind)
   util.tmp_ctx(function(path)
     nv.forward_lua("require('fyler').toggle")({ dir = path, kind = kind })
     nv.wait(50)
@@ -43,7 +54,7 @@ T["Each WinKind"]["Toggle"] = function(kind)
   end)
 end
 
-T["Each WinKind"]["Navigate"] = function(kind)
+T["Each WinKind Can"]["Navigate"] = function(kind)
   util.tmp_ctx(function(path)
     nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
     nv.wait(50)

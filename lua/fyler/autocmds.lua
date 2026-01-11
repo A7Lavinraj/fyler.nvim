@@ -45,7 +45,7 @@ function M.setup(config)
         local bufname = vim.api.nvim_buf_get_name(args.buf)
         if helper.is_protocol_uri(bufname) then
           local finder_instance = require("fyler.views.finder").instance(bufname)
-          if not finder_instance:isopen() then vim.schedule(function() fyler.open({ dir = bufname }) end) end
+          if not finder_instance:isopen() then vim.schedule_wrap(fyler.open)({ dir = bufname }) end
         end
       end,
     })

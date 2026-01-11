@@ -157,16 +157,7 @@ end
 
 T["Respects User Config"] = function()
   nv.module_unload("fyler")
-  nv.module_load(
-    "fyler",
-    { views = {
-      finder = {
-        mappings = {
-          ["gc"] = "CloseView",
-        },
-      },
-    } }
-  )
+  nv.module_load("fyler", { views = { finder = { mappings = { ["gc"] = "CloseView" } } } })
   eq(nv.lua_get("require('fyler.config').values.views.finder.mappings['gc']"), "CloseView")
 end
 

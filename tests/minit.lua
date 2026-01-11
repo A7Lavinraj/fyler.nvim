@@ -43,4 +43,4 @@ for _, dep in ipairs(map(M.dependencies)) do
   if vim.fn.isdirectory(path) == 1 then vim.opt.runtimepath:prepend(path) end
 end
 
-vim.opt.runtimepath:prepend(".")
+vim.opt.runtimepath:prepend(vim.fn.getcwd())

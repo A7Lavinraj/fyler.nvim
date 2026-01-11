@@ -4,7 +4,7 @@ local util = require("fyler.lib.util")
 
 local cmd = {}
 
-function cmd.cwd() return vim.uv.cwd() end
+function cmd.cwd() return vim.fn.getcwd() end
 
 function cmd.write(opts, _next)
   local path = Path.new(opts.path):os_path()

@@ -95,7 +95,6 @@ function M.new_neovim()
 
   child.module_unload = function(name)
     child.lua(([[package.loaded['%s'] = nil]]):format(name))
-    child.lua(('_G["%s"] = nil'):format(name))
     if child.fn.exists("#" .. name) == 1 then child.api.nvim_del_augroup_by_name(name) end
   end
 

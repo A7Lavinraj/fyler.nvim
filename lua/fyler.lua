@@ -66,10 +66,10 @@ function M.setup(opts)
   local finder = require("fyler.views.finder")
 
   -- Fyler.API: Opens finder view with provided options
-  M.open = vim.schedule_wrap(function(args)
+  M.open = function(args)
     args = args or {}
     finder.open(args.dir, args.kind)
-  end)
+  end
 
   -- Fyler.API: Closes current finder view
   M.close = finder.close
