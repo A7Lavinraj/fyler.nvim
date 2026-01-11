@@ -1,24 +1,22 @@
-local MiniTest = require "mini.test"
+local MiniTest = require("mini.test")
 
 local M = {}
 
 M.eq = MiniTest.expect.equality
-M.mt = MiniTest.new_expectation("string matching", function(str, pattern)
-  return str:find(pattern) ~= nil
-end, function(str, pattern)
-  return string.format("Pattern: %s\nObserved string: %s", vim.inspect(pattern), str)
-end)
+M.mt = MiniTest.new_expectation(
+  "string matching",
+  function(str, pattern) return str:find(pattern) ~= nil end,
+  function(str, pattern) return string.format("Pattern: %s\nObserved string: %s", vim.inspect(pattern), str) end
+)
 
 ---@param fn fun(path: string)
 function M.tmp_ctx(fn)
-  local function item_config(name, type, children)
-    return { name = name, type = type, children = children }
-  end
+  local function item_config(name, type, children) return { name = name, type = type, children = children } end
 
   local fake_data = {
     item_config("a-dir", "directory", {
       item_config("aa-dir", "directory", {
-        item_config "aaa-file",
+        item_config("aaa-file"),
       }),
       item_config("aa-file", "file"),
       item_config("ab-file", "file"),
@@ -31,7 +29,7 @@ function M.tmp_ctx(fn)
     item_config("b-file", "file"),
   }
 
-  local root = dofile("bin/setup_deps.lua").get_dir "data"
+  local root = dofile("bin/setup_deps.lua").get_dir("data")
 
   local function write_file(path)
     vim.fn.mkdir(vim.fn.fnamemodify(path, ":h"), "p")
@@ -69,35 +67,36 @@ function M.new_neovim()
   local child = MiniTest.new_child_neovim()
 
   child.setup = function()
-    child.restart { "-u", "tests/minit.lua", "-c", "lua require('fyler').setup()" }
+    child.restart({ "-u", "tests/minit.lua", "-c", "lua require('fyler').setup()" })
     child.set_size(20, 80)
   end
 
   child.set_size = function(lines, columns)
-    if type(lines) == "number" then
-      child.o.lines = lines
-    end
+    if type(lines) == "number" then child.o.lines = lines end
 
-    if type(columns) == "number" then
-      child.o.columns = columns
-    end
+    if type(columns) == "number" then child.o.columns = columns end
   end
 
-  child.set_lines = function(...)
-    child.api.nvim_buf_set_lines(...)
-  end
+  child.set_lines = function(...) child.api.nvim_buf_set_lines(...) end
 
-  child.get_lines = function(...)
-    return child.api.nvim_buf_get_lines(...)
-  end
+  child.get_lines = function(...) return child.api.nvim_buf_get_lines(...) end
 
   child.wait = vim.uv.sleep
 
   child.forward_lua = function(fun_str)
     local lua_cmd = fun_str .. "(...)"
-    return function(...)
-      return child.lua_get(lua_cmd, { ... })
-    end
+    return function(...) return child.lua_get(lua_cmd, { ... }) end
+  end
+
+  child.module_load = function(name, config)
+    local lua_cmd = ([[require('%s').setup(...)]]):format(name)
+    child.lua(lua_cmd, { config })
+  end
+
+  child.module_unload = function(name)
+    child.lua(([[package.loaded['%s'] = nil]]):format(name))
+    child.lua(('_G["%s"] = nil'):format(name))
+    if child.fn.exists("#" .. name) == 1 then child.api.nvim_del_augroup_by_name(name) end
   end
 
   child.expect_screenshot = function(opts, path)

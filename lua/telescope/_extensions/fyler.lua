@@ -1,16 +1,14 @@
 local has_telescope, telescope = pcall(require, "telescope")
 
-if not has_telescope then
-  error "Fyler.nvim requires telescope.nvim"
-end
+if not has_telescope then error("Fyler.nvim requires telescope.nvim") end
 
-local action_state = require "telescope.actions.state"
-local actions = require "telescope.actions"
-local config = require "telescope.config"
-local finders = require "telescope.finders"
-local fyler = require "fyler"
-local pickers = require "telescope.pickers"
-local util = require "fyler.lib.util"
+local action_state = require("telescope.actions.state")
+local actions = require("telescope.actions")
+local config = require("telescope.config")
+local finders = require("telescope.finders")
+local fyler = require("fyler")
+local pickers = require("telescope.pickers")
+local util = require("fyler.lib.util")
 
 local default_opts = {
   sorting_strategy = "ascending",
@@ -21,14 +19,10 @@ local default_opts = {
   },
 }
 
-local finder = finders.new_async_job {
-  command_generator = function()
-    return { "zoxide", "query", "--list" }
-  end,
+local finder = finders.new_async_job({
+  command_generator = function() return { "zoxide", "query", "--list" } end,
   entry_maker = function(entry)
-    if not entry or entry == "" then
-      return nil
-    end
+    if not entry or entry == "" then return nil end
 
     local display_name = vim.fn.fnamemodify(entry, ":t")
     return {
@@ -37,13 +31,11 @@ local finder = finders.new_async_job {
       ordinal = entry,
     }
   end,
-}
+})
 
-return telescope.register_extension {
+return telescope.register_extension({
   exports = {
-    setup = function(opts)
-      default_opts = util.tbl_merge_force(default_opts, opts)
-    end,
+    setup = function(opts) default_opts = util.tbl_merge_force(default_opts, opts) end,
     zoxide = function()
       pickers
         .new(default_opts, {
@@ -56,9 +48,7 @@ return telescope.register_extension {
               local selection = action_state.get_selected_entry()
               actions.close(prompt_bufnr)
 
-              if selection then
-                fyler.open { dir = selection.value }
-              end
+              if selection then fyler.open({ dir = selection.value }) end
             end)
 
             return true
@@ -67,4 +57,4 @@ return telescope.register_extension {
         :find()
     end,
   },
-}
+})

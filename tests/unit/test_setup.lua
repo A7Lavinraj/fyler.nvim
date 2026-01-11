@@ -1,43 +1,41 @@
-local util = require "tests.util"
+local util = require("tests.util")
 
 local eq = util.eq
 local nv = util.new_neovim()
 
-local T = util.new_set {
+local T = util.new_set({
   hooks = {
     pre_case = nv.setup,
     post_case = nv.stop,
   },
-}
+})
 
 T["Side Effects"] = function()
-  local validate_hl_group = function(name, ref)
-    util.mt(nv.cmd_capture("hi " .. name), ref)
-  end
+  local validate_hl_group = function(name, ref) util.mt(nv.cmd_capture("hi " .. name), ref) end
 
-  eq(nv.fn.hlexists "FylerBlue", 1)
-  eq(nv.fn.hlexists "FylerGreen", 1)
-  eq(nv.fn.hlexists "FylerGrey", 1)
-  eq(nv.fn.hlexists "FylerRed", 1)
-  eq(nv.fn.hlexists "FylerYellow", 1)
+  eq(nv.fn.hlexists("FylerBlue"), 1)
+  eq(nv.fn.hlexists("FylerGreen"), 1)
+  eq(nv.fn.hlexists("FylerGrey"), 1)
+  eq(nv.fn.hlexists("FylerRed"), 1)
+  eq(nv.fn.hlexists("FylerYellow"), 1)
 
-  eq(nv.fn.hlexists "FylerFSDirectoryIcon", 1)
-  eq(nv.fn.hlexists "FylerFSDirectoryName", 1)
+  eq(nv.fn.hlexists("FylerFSDirectoryIcon"), 1)
+  eq(nv.fn.hlexists("FylerFSDirectoryName"), 1)
 
-  eq(nv.fn.hlexists "FylerFSFile", 1)
-  eq(nv.fn.hlexists "FylerFSLink", 1)
+  eq(nv.fn.hlexists("FylerFSFile"), 1)
+  eq(nv.fn.hlexists("FylerFSLink"), 1)
 
-  eq(nv.fn.hlexists "FylerGitAdded", 1)
-  eq(nv.fn.hlexists "FylerGitConflict", 1)
-  eq(nv.fn.hlexists "FylerGitDeleted", 1)
-  eq(nv.fn.hlexists "FylerGitIgnored", 1)
-  eq(nv.fn.hlexists "FylerGitModified", 1)
-  eq(nv.fn.hlexists "FylerGitRenamed", 1)
-  eq(nv.fn.hlexists "FylerGitStaged", 1)
-  eq(nv.fn.hlexists "FylerGitUnstaged", 1)
-  eq(nv.fn.hlexists "FylerGitUntracked", 1)
+  eq(nv.fn.hlexists("FylerGitAdded"), 1)
+  eq(nv.fn.hlexists("FylerGitConflict"), 1)
+  eq(nv.fn.hlexists("FylerGitDeleted"), 1)
+  eq(nv.fn.hlexists("FylerGitIgnored"), 1)
+  eq(nv.fn.hlexists("FylerGitModified"), 1)
+  eq(nv.fn.hlexists("FylerGitRenamed"), 1)
+  eq(nv.fn.hlexists("FylerGitStaged"), 1)
+  eq(nv.fn.hlexists("FylerGitUnstaged"), 1)
+  eq(nv.fn.hlexists("FylerGitUntracked"), 1)
 
-  eq(nv.fn.hlexists "FylerWinPick", 1)
+  eq(nv.fn.hlexists("FylerWinPick"), 1)
 
   validate_hl_group("FylerNormal", "links to Normal")
   validate_hl_group("FylerNormalNC", "links to NormalNC")
@@ -50,9 +48,7 @@ T["Side Effects"] = function()
 end
 
 T["Setup Config"] = function()
-  local expect_config = function(field, value)
-    eq(nv.lua_get([[require('fyler.config').values.]] .. field), value)
-  end
+  local expect_config = function(field, value) eq(nv.lua_get([[require('fyler.config').values.]] .. field), value) end
 
   expect_config("hooks.on_delete", vim.NIL)
   expect_config("hooks.on_rename", vim.NIL)

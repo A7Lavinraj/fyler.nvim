@@ -1,4 +1,4 @@
-local Path = require "fyler.lib.path"
+local Path = require("fyler.lib.path")
 local M = {}
 
 ---@param opts {path: string, callback: function}
@@ -38,11 +38,11 @@ function M.dump(opts)
     abspath
   )
 
-  local Process = require "fyler.lib.process"
-  local proc = Process.new {
+  local Process = require("fyler.lib.process")
+  local proc = Process.new({
     path = "powershell",
     args = { "-NoProfile", "-NonInteractive", "-Command", ps_script },
-  }
+  })
 
   proc:spawn_async(function(code)
     vim.schedule(function()

@@ -55,19 +55,15 @@ local did_setup = false
 
 ---@param opts FylerSetup|nil
 function M.setup(opts)
-  if vim.fn.has "nvim-0.11" ~= 1 then
-    return vim.notify "Fyler requires at least NVIM 0.11"
-  end
+  if vim.fn.has("nvim-0.11") ~= 1 then return vim.notify("Fyler requires at least NVIM 0.11") end
 
-  if did_setup then
-    return
-  end
+  if did_setup then return end
 
   require("fyler.config").setup(opts)
 
   did_setup = true
 
-  local finder = require "fyler.views.finder"
+  local finder = require("fyler.views.finder")
 
   -- Fyler.API: Opens finder view with provided options
   M.open = vim.schedule_wrap(function(args)
@@ -88,9 +84,7 @@ function M.setup(opts)
   M.focus = finder.focus
 
   -- Fyler.API: Focuses given file path
-  M.navigate = function(path)
-    finder.navigate(path)
-  end
+  M.navigate = function(path) finder.navigate(path) end
 end
 
 return M

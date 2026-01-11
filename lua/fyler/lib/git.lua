@@ -1,7 +1,7 @@
-local Path = require "fyler.lib.path"
-local Process = require "fyler.lib.process"
-local config = require "fyler.config"
-local util = require "fyler.lib.util"
+local Path = require("fyler.lib.path")
+local Process = require("fyler.lib.process")
+local config = require("fyler.config")
+local util = require("fyler.lib.util")
 
 local M = {}
 
@@ -46,24 +46,30 @@ local hl_map = {
 function M.map_entries(root_dir, entries)
   local status_map =
     util.tbl_merge_force(M.build_modified_lookup_for(root_dir), M.build_ignored_lookup_for(root_dir, entries))
-  return util.tbl_map(entries, function(e)
-    return {
-      config.values.views.finder.columns.git.symbols[icon_map[status_map[e]]] or "",
-      hl_map[icon_map[status_map[e]]],
-    }
-  end)
+  return util.tbl_map(
+    entries,
+    function(e)
+      return {
+        config.values.views.finder.columns.git.symbols[icon_map[status_map[e]]] or "",
+        hl_map[icon_map[status_map[e]]],
+      }
+    end
+  )
 end
 
 function M.map_entries_async(root_dir, entries, onmapped)
   M.build_modified_lookup_for_async(root_dir, function(modified_lookup)
     M.build_ignored_lookup_for_async(root_dir, entries, function(ignored_lookup)
       local status_map = util.tbl_merge_force(modified_lookup, ignored_lookup)
-      local result = util.tbl_map(entries, function(e)
-        return {
-          config.values.views.finder.columns.git.symbols[icon_map[status_map[e]]] or "",
-          hl_map[icon_map[status_map[e]]],
-        }
-      end)
+      local result = util.tbl_map(
+        entries,
+        function(e)
+          return {
+            config.values.views.finder.columns.git.symbols[icon_map[status_map[e]]] or "",
+            hl_map[icon_map[status_map[e]]],
+          }
+        end
+      )
       onmapped(result)
     end)
   end)
@@ -101,10 +107,10 @@ end
 ---@param dir string
 ---@param onbuild function
 function M.build_modified_lookup_for_async(dir, onbuild)
-  local process = Process.new {
+  local process = Process.new({
     path = "git",
     args = { "-C", dir, "status", "--porcelain" },
-  }
+  })
 
   process:spawn_async(function(code)
     vim.schedule(function()
@@ -136,9 +142,7 @@ function M.build_ignored_lookup_for(dir, stdin)
 
   local lookup = {}
   for _, line in process:stdout_iter() do
-    if line ~= "" then
-      lookup[line] = "!!"
-    end
+    if line ~= "" then lookup[line] = "!!" end
   end
 
   return lookup
@@ -148,11 +152,11 @@ end
 ---@param stdin string|string[]
 ---@param onbuild function
 function M.build_ignored_lookup_for_async(dir, stdin, onbuild)
-  local process = Process.new {
+  local process = Process.new({
     path = "git",
     args = { "-C", dir, "check-ignore", "--stdin" },
     stdin = table.concat(util.tbl_wrap(stdin), "\n"),
-  }
+  })
 
   process:spawn_async(function(code)
     vim.schedule(function()
@@ -160,9 +164,7 @@ function M.build_ignored_lookup_for_async(dir, stdin, onbuild)
 
       if code == 0 then
         for _, line in process:stdout_iter() do
-          if line ~= "" then
-            lookup[line] = "!!"
-          end
+          if line ~= "" then lookup[line] = "!!" end
         end
       end
 

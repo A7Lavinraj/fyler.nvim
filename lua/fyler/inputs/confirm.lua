@@ -1,6 +1,6 @@
-local Ui = require "fyler.lib.ui"
-local Win = require "fyler.lib.win"
-local util = require "fyler.lib.util"
+local Ui = require("fyler.lib.ui")
+local Win = require("fyler.lib.win")
+local util = require("fyler.lib.util")
 
 local Confirm = {}
 Confirm.__index = Confirm

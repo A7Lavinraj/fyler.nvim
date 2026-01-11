@@ -17,9 +17,7 @@ local function make_rng(seed)
   return function(min, max)
     state = (1103515245 * state + 12345) % 2 ^ 31
     local r = state / 2 ^ 31
-    if min and max then
-      return math.floor(min + r * (max - min + 1))
-    end
+    if min and max then return math.floor(min + r * (max - min + 1)) end
     return r
   end
 end
@@ -82,9 +80,7 @@ function M.Name:generate()
 end
 
 setmetatable(M.Name, {
-  __call = function(_, opts)
-    return M.Name.new(opts)
-  end,
+  __call = function(_, opts) return M.Name.new(opts) end,
 })
 
 return M

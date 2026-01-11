@@ -16,12 +16,8 @@ function M.open(_, onsubmit, opts)
   local user_filter = opts.filter
   local picker_opts = vim.tbl_deep_extend("force", opts, {
     filter = function(win, buf)
-      if vim.bo[buf].filetype == "fyler" then
-        return false
-      end
-      if user_filter then
-        return user_filter(win, buf)
-      end
+      if vim.bo[buf].filetype == "fyler" then return false end
+      if user_filter then return user_filter(win, buf) end
       return true
     end,
   })

@@ -56,16 +56,18 @@
 ---   }
 --- <
 
-local deprecated = require "fyler.deprecated"
-local util = require "fyler.lib.util"
+local deprecated = require("fyler.deprecated")
+local util = require("fyler.lib.util")
 
 local config = {}
 
 local DEPRECATION_RULES = {
   deprecated.rename("views.finder.git", "views.finder.columns.git"),
-  deprecated.transform("views.finder.indentscope.marker", "views.finder.indentscope.markers", function()
-    return { { "│", "FylerIndentMarker" }, { "└", "FylerIndentMarker" } }
-  end),
+  deprecated.transform(
+    "views.finder.indentscope.marker",
+    "views.finder.indentscope.markers",
+    function() return { { "│", "FylerIndentMarker" }, { "└", "FylerIndentMarker" } } end
+  ),
 }
 
 ---@class FylerConfigGitStatus
@@ -373,9 +375,7 @@ function config.rev_maps(name)
   end
 
   setmetatable(rev_maps, {
-    __index = function()
-      return "<nop>"
-    end,
+    __index = function() return "<nop>" end,
   })
 
   return rev_maps
@@ -386,9 +386,7 @@ end
 function config.usr_maps(name)
   local user_maps = {}
   for k, v in pairs(config.values.views[name].mappings or {}) do
-    if type(v) == "function" then
-      user_maps[k] = v
-    end
+    if type(v) == "function" then user_maps[k] = v end
   end
 
   return user_maps
@@ -417,11 +415,11 @@ function config.setup(opts)
     config.winpick_provider = winpick_provider
   end
 
-  for _, sub_module in ipairs {
+  for _, sub_module in ipairs({
     "fyler.autocmds",
     "fyler.hooks",
     "fyler.lib.hl",
-  } do
+  }) do
     require(sub_module).setup(config)
   end
 end

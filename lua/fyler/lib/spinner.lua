@@ -1,4 +1,4 @@
-local util = require "fyler.lib.util"
+local util = require("fyler.lib.util")
 
 ---@class Spinner
 ---@field text string
@@ -34,16 +34,12 @@ function Spinner.new(text)
 end
 
 ---@param text string
-function Spinner:set_text(text)
-  self.text = text
-end
+function Spinner:set_text(text) self.text = text end
 
 function Spinner:start()
   if not self.timer then
     self.cmdheight = vim.o.cmdheight
-    if self.cmdheight == 0 then
-      vim.o.cmdheight = 1
-    end
+    if self.cmdheight == 0 then vim.o.cmdheight = 1 end
 
     self.timer = assert(vim.uv.new_timer())
     self.timer:start(
@@ -64,13 +60,11 @@ function Spinner:stop()
     self.timer = nil
     timer:stop()
 
-    if not timer:is_closing() then
-      timer:close()
-    end
+    if not timer:is_closing() then timer:close() end
   end
 
   vim.schedule(function()
-    vim.cmd "redraw | echomsg ''"
+    vim.cmd("redraw | echomsg ''")
 
     if self.cmdheight then
       vim.o.cmdheight = self.cmdheight

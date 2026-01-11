@@ -1,12 +1,10 @@
-local Path = require "fyler.lib.path"
-local hooks = require "fyler.hooks"
-local util = require "fyler.lib.util"
+local Path = require("fyler.lib.path")
+local hooks = require("fyler.hooks")
+local util = require("fyler.lib.util")
 
 local cmd = {}
 
-function cmd.cwd()
-  return vim.uv.cwd()
-end
+function cmd.cwd() return vim.uv.cwd() end
 
 function cmd.write(opts, _next)
   local path = Path.new(opts.path):os_path()
@@ -32,14 +30,10 @@ function cmd.write(opts, _next)
           vim.uv.fs_close(fd, function()
             cmd.rm({
               path = path,
-            }, function()
-              pcall(_next, string.format("Failed to write to %s: %s", path, err_write))
-            end)
+            }, function() pcall(_next, string.format("Failed to write to %s: %s", path, err_write)) end)
           end)
         else
-          vim.uv.fs_close(fd, function(err_close)
-            pcall(_next, err_close)
-          end)
+          vim.uv.fs_close(fd, function(err_close) pcall(_next, err_close) end)
         end
       end)
     end)
@@ -60,9 +54,7 @@ function cmd.ls(opts, _next)
     local function poll_entries()
       vim.uv.fs_readdir(dir, function(err_read, entries)
         if err_read then
-          vim.uv.fs_closedir(dir, function()
-            pcall(_next, err_read, nil)
-          end)
+          vim.uv.fs_closedir(dir, function() pcall(_next, err_read, nil) end)
           return
         end
 
@@ -91,9 +83,7 @@ function cmd.ls(opts, _next)
 
           poll_entries() -- Continue reading
         else
-          vim.uv.fs_closedir(dir, function()
-            pcall(_next, nil, contents)
-          end)
+          vim.uv.fs_closedir(dir, function() pcall(_next, nil, contents) end)
         end
       end)
     end
@@ -111,9 +101,7 @@ function cmd.touch(opts, _next)
       return
     end
 
-    vim.uv.fs_close(fd, function(err_close)
-      pcall(_next, err_close)
-    end)
+    vim.uv.fs_close(fd, function(err_close) pcall(_next, err_close) end)
   end)
 end
 
@@ -135,16 +123,12 @@ function cmd.mkdir(opts, _next)
 
       cmd.mkdir({
         path = prefixes[index],
-      }, function()
-        create_next(index + 1)
-      end)
+      }, function() create_next(index + 1) end)
     end
 
     create_next(1)
   else
-    vim.uv.fs_mkdir(path, 493, function(err)
-      pcall(_next, err)
-    end)
+    vim.uv.fs_mkdir(path, 493, function(err) pcall(_next, err) end)
   end
 end
 
@@ -165,9 +149,7 @@ local function _read_dir_iter(opts, _next)
           local i = 0
           pcall(_next, nil, function()
             i = i + 1
-            if i <= #entries then
-              return i, entries[i]
-            end
+            if i <= #entries then return i, entries[i] end
           end)
         end
       end)
@@ -199,9 +181,7 @@ function cmd.rm(opts, _next)
 
       local function remove_next(index)
         if index > #entries then
-          vim.uv.fs_rmdir(path, function(err_rmdir)
-            pcall(_next, err_rmdir)
-          end)
+          vim.uv.fs_rmdir(path, function(err_rmdir) pcall(_next, err_rmdir) end)
           return
         end
 
@@ -220,9 +200,7 @@ function cmd.rm(opts, _next)
       remove_next(1)
     end)
   else
-    vim.uv.fs_unlink(path, function(err)
-      pcall(_next, err)
-    end)
+    vim.uv.fs_unlink(path, function(err) pcall(_next, err) end)
   end
 end
 
@@ -254,9 +232,7 @@ function cmd.mv(opts, _next)
 
           local function move_next(index)
             if index > #entries then
-              vim.uv.fs_rmdir(src, function(err_rmdir)
-                pcall(_next, err_rmdir)
-              end)
+              vim.uv.fs_rmdir(src, function(err_rmdir) pcall(_next, err_rmdir) end)
               return
             end
 
@@ -276,9 +252,7 @@ function cmd.mv(opts, _next)
         end)
       end)
     else
-      vim.uv.fs_rename(src, dst, function(err)
-        pcall(_next, err)
-      end)
+      vim.uv.fs_rename(src, dst, function(err) pcall(_next, err) end)
     end
   end)
 end
@@ -335,9 +309,7 @@ function cmd.cp(opts, _next)
       path = Path.new(dst):parent():os_path(),
       flags = { p = true },
     }, function()
-      vim.uv.fs_copyfile(src, dst, function(err)
-        pcall(_next, err)
-      end)
+      vim.uv.fs_copyfile(src, dst, function(err) pcall(_next, err) end)
     end)
   end
 end
@@ -370,9 +342,7 @@ function cmd.delete(opts, _next)
       return
     end
 
-    vim.schedule(function()
-      hooks.on_delete(opts.path)
-    end)
+    vim.schedule(function() hooks.on_delete(opts.path) end)
 
     pcall(_next)
   end)
@@ -388,9 +358,7 @@ function cmd.move(opts, _next)
       return
     end
 
-    vim.schedule(function()
-      hooks.on_rename(opts.src, opts.dst)
-    end)
+    vim.schedule(function() hooks.on_rename(opts.src, opts.dst) end)
 
     pcall(_next)
   end)
@@ -404,9 +372,7 @@ function cmd.copy(opts, _next)
   }, _next)
 end
 
-function cmd.trash(opts, _next)
-  require("fyler.lib.trash").dump(opts.src, _next)
-end
+function cmd.trash(opts, _next) require("fyler.lib.trash").dump(opts.src, _next) end
 
 local function builder(fn)
   local meta = {
@@ -415,19 +381,13 @@ local function builder(fn)
       local callback = nil
 
       -- Check if last arg is a callback
-      if type(args[#args]) == "function" then
-        callback = table.remove(args)
-      end
+      if type(args[#args]) == "function" then callback = table.remove(args) end
 
       -- Add flags if they exist and are not empty
-      if t.flags and not vim.tbl_isempty(t.flags) then
-        table.insert(args, t.flags)
-      end
+      if t.flags and not vim.tbl_isempty(t.flags) then table.insert(args, t.flags) end
 
       -- Add callback back at the end
-      if callback then
-        table.insert(args, callback)
-      end
+      if callback then table.insert(args, callback) end
 
       return fn(util.unpack(args))
     end,

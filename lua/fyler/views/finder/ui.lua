@@ -1,8 +1,8 @@
-local Ui = require "fyler.lib.ui"
-local config = require "fyler.config"
-local diagnostic = require "fyler.lib.diagnostic"
-local git = require "fyler.lib.git"
-local util = require "fyler.lib.util"
+local Ui = require("fyler.lib.ui")
+local config = require("fyler.config")
+local diagnostic = require("fyler.lib.diagnostic")
+local git = require("fyler.lib.git")
+local util = require("fyler.lib.util")
 
 local Component = Ui.Component
 local Text = Ui.Text
@@ -21,9 +21,7 @@ local function sort_nodes(nodes)
       return false
     else
       local function pad_numbers(str)
-        return str:gsub("%d+", function(n)
-          return string.format("%010d", n)
-        end)
+        return str:gsub("%d+", function(n) return string.format("%010d", n) end)
       end
       return pad_numbers(x.name) < pad_numbers(y.name)
     end
@@ -35,16 +33,12 @@ local function flatten_tree(node, depth, result)
   depth = depth or 0
   result = result or {}
 
-  if not node or not node.children then
-    return result
-  end
+  if not node or not node.children then return result end
 
   local sorted_items = sort_nodes(node.children)
   for _, item in ipairs(sorted_items) do
     table.insert(result, { item = item, depth = depth })
-    if item.children and #item.children > 0 then
-      flatten_tree(item, depth + 1, result)
-    end
+    if item.children and #item.children > 0 then flatten_tree(item, depth + 1, result) end
   end
 
   return result
@@ -53,9 +47,7 @@ end
 ---@return string|nil, string|nil
 local function icon_and_hl(item)
   local icon, hl = config.icon_provider(item.type, item.path)
-  if config.values.integrations.icon == "none" then
-    return icon, hl
-  end
+  if config.values.integrations.icon == "none" then return icon, hl end
 
   if item.type == "directory" then
     local icons = config.values.views.finder.icon
@@ -77,9 +69,7 @@ local function create_column_context(tag, node, flattened_entries, files_column)
 
     get_entry_data = function(index)
       local entry = flattened_entries[index]
-      if not entry then
-        return nil
-      end
+      if not entry then return nil end
 
       return {
         path = entry.item.path,
@@ -92,14 +82,10 @@ local function create_column_context(tag, node, flattened_entries, files_column)
     end,
 
     get_all_paths = function()
-      return util.tbl_map(flattened_entries, function(entry)
-        return entry.item.path
-      end)
+      return util.tbl_map(flattened_entries, function(entry) return entry.item.path end)
     end,
 
-    get_files_column = function()
-      return files_column
-    end,
+    get_files_column = function() return files_column end,
   }
 end
 
@@ -122,10 +108,10 @@ local columns = {
         table.insert(column, Text(nil, { virt_text = { get_entry } }))
       end
 
-      onbuild {
+      onbuild({
         column = column,
         highlights = highlights,
-      }
+      })
     end)
   end,
 
@@ -142,10 +128,10 @@ local columns = {
         table.insert(column, Text(nil, { virt_text = { get_entry } }))
       end
 
-      onbuild {
+      onbuild({
         column = column,
         highlights = highlights,
-      }
+      })
     end)
   end,
 }
@@ -161,14 +147,10 @@ local function collect_and_render_details(tag, context, files_column, oncollect)
     end
   end
 
-  if total == 0 then
-    return
-  end
+  if total == 0 then return end
 
   local function on_column_complete(column_name, column_data)
-    if M.tag ~= tag then
-      return
-    end
+    if M.tag ~= tag then return end
 
     results[column_name] = column_data
     completed = completed + 1
@@ -198,9 +180,7 @@ local function collect_and_render_details(tag, context, files_column, oncollect)
       local detail_columns = { Column(files_column) }
       for _, col_name in ipairs(COLUMN_ORDER) do
         local result = results[col_name]
-        if result and result.column then
-          table.insert(detail_columns, Column(result.column))
-        end
+        if result and result.column then table.insert(detail_columns, Column(result.column)) end
       end
 
       oncollect({ tag = "files", children = { Row(detail_columns) } }, { partial = true })
@@ -211,14 +191,10 @@ local function collect_and_render_details(tag, context, files_column, oncollect)
     local column_fn = columns[column_name]
     if column_fn then
       local success = pcall(function()
-        column_fn(context, cfg, function(column_data)
-          on_column_complete(column_name, column_data)
-        end)
+        column_fn(context, cfg, function(column_data) on_column_complete(column_name, column_data) end)
       end)
 
-      if not success then
-        on_column_complete(column_name, nil)
-      end
+      if not success then on_column_complete(column_name, nil) end
     end
   end
 end
@@ -227,14 +203,10 @@ M.files = Component.new_async(function(node, onupdate)
   M.tag = M.tag + 1
 
   local current_tag = M.tag
-  if not node or not node.children then
-    return onupdate { tag = "files", children = {} }
-  end
+  if not node or not node.children then return onupdate({ tag = "files", children = {} }) end
 
   local flattened_entries = flatten_tree(node)
-  if #flattened_entries == 0 then
-    return onupdate { tag = "files", children = {} }
-  end
+  if #flattened_entries == 0 then return onupdate({ tag = "files", children = {} }) end
 
   local files_column = {}
   for _, entry in ipairs(flattened_entries) do
@@ -246,12 +218,12 @@ M.files = Component.new_async(function(node, onupdate)
 
     local indentation_text = Text(string.rep(" ", 2 * depth))
     local icon_text = Text(icon, { highlight = icon_highlight })
-    local ref_id_text = item.ref_id and Text(string.format("/%05d ", item.ref_id)) or Text ""
+    local ref_id_text = item.ref_id and Text(string.format("/%05d ", item.ref_id)) or Text("")
     local name_text = Text(item.name, { highlight = name_highlight })
-    table.insert(files_column, Row { indentation_text, icon_text, ref_id_text, name_text })
+    table.insert(files_column, Row({ indentation_text, icon_text, ref_id_text, name_text }))
   end
 
-  onupdate { tag = "files", children = { Row { Column(files_column) } } }
+  onupdate({ tag = "files", children = { Row({ Column(files_column) }) } })
 
   collect_and_render_details(
     current_tag,
@@ -275,15 +247,15 @@ M.operations = Component.new(function(operations)
       table.insert(details, Text(operation.path))
     elseif operation.type == "move" then
       table.insert(types, Text("MOVE", { highlight = "FylerYellow" }))
-      table.insert(details, Row { Text(operation.src), Text " > ", Text(operation.dst) })
+      table.insert(details, Row({ Text(operation.src), Text(" > "), Text(operation.dst) }))
     elseif operation.type == "copy" then
       table.insert(types, Text("COPY", { highlight = "FylerBlue" }))
-      table.insert(details, Row { Text(operation.src), Text " > ", Text(operation.dst) })
+      table.insert(details, Row({ Text(operation.src), Text(" > "), Text(operation.dst) }))
     else
       error(string.format("Unknown operation type '%s'", operation.type))
     end
   end
-  return { tag = "operations", children = { Row { Column(types), Text " ", Column(details) } } }
+  return { tag = "operations", children = { Row({ Column(types), Text(" "), Column(details) }) } }
 end)
 
 return M

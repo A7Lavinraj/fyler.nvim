@@ -27,9 +27,7 @@ function Trie:insert(segments, value)
   end
 
   local head = segments[1]
-  if not self.children[head] then
-    self.children[head] = Trie.new()
-  end
+  if not self.children[head] then self.children[head] = Trie.new() end
 
   local rest = {}
   for i = 2, #segments do
@@ -43,14 +41,10 @@ end
 ---@param segments string[]
 ---@return Trie|nil
 function Trie:find(segments)
-  if #segments == 0 then
-    return self
-  end
+  if #segments == 0 then return self end
 
   local head = segments[1]
-  if not self.children[head] then
-    return nil
-  end
+  if not self.children[head] then return nil end
 
   local rest = {}
   for i = 2, #segments do
@@ -64,9 +58,7 @@ end
 ---@param segments string[]
 ---@return boolean -- true if deleted, false if not found
 function Trie:delete(segments)
-  if #segments == 0 then
-    return false
-  end
+  if #segments == 0 then return false end
 
   if #segments == 1 then
     local head = segments[1]
@@ -78,9 +70,7 @@ function Trie:delete(segments)
   end
 
   local head = segments[1]
-  if not self.children[head] then
-    return false
-  end
+  if not self.children[head] then return false end
 
   local rest = {}
   for i = 2, #segments do

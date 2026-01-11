@@ -1,5 +1,5 @@
-local log = require "fyler.log"
-local util = require "fyler.lib.util"
+local log = require("fyler.log")
+local util = require("fyler.lib.util")
 
 local M = {}
 
@@ -19,33 +19,25 @@ local function execute_async(async_fn, next, ...)
 
     if not success then
       trace_error("Coroutine error: " .. tostring(result), co)
-      if next then
-        next(nil, result)
-      end
+      if next then next(nil, result) end
       return
     end
 
     local status = coroutine.status(co)
 
     if status == "dead" then
-      if next then
-        next(result)
-      end
+      if next then next(result) end
     elseif status == "suspended" then
       if type(result) == "function" then
         local exec_success, exec_error = pcall(result, step)
         if not exec_success then
           trace_error("Error executing yielded function: " .. tostring(exec_error), co)
-          if next then
-            next(nil, exec_error)
-          end
+          if next then next(nil, exec_error) end
         end
       else
         local error_msg = "Invalid yield: expected function, got " .. type(result)
         trace_error(error_msg, co)
-        if next then
-          next(nil, error_msg)
-        end
+        if next then next(nil, error_msg) end
       end
     end
   end
@@ -53,9 +45,7 @@ local function execute_async(async_fn, next, ...)
   local start_success, start_error = pcall(step, util.unpack(args))
   if not start_success then
     trace_error("Failed to start execution: " .. tostring(start_error))
-    if next then
-      next(nil, start_error)
-    end
+    if next then next(nil, start_error) end
   end
 end
 
@@ -65,9 +55,7 @@ function M.await(fn, ...)
   return coroutine.yield(function(resume_fn)
     table.insert(args, function(...)
       local success, error = pcall(resume_fn, ...)
-      if not success then
-        trace_error("Error in await callback: " .. tostring(error))
-      end
+      if not success then trace_error("Error in await callback: " .. tostring(error)) end
     end)
 
     local success, error = pcall(fn, util.unpack(args))
@@ -90,14 +78,10 @@ function M.wrap(fn)
 end
 
 function M.void_wrap(async_fn)
-  return function(...)
-    execute_async(async_fn, nil, ...)
-  end
+  return function(...) execute_async(async_fn, nil, ...) end
 end
 
-function M.void(async_fn, cb)
-  execute_async(async_fn, cb)
-end
+function M.void(async_fn, cb) execute_async(async_fn, cb) end
 
 M.schedule = M.wrap(vim.schedule)
 

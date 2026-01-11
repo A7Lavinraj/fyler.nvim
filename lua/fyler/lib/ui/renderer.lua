@@ -69,9 +69,7 @@ function Renderer:_render_text(component, current_col)
 
     return text_value, current_col + width
   else
-    if text_value then
-      table.insert(self.line, text_value)
-    end
+    if text_value then table.insert(self.line, text_value) end
 
     -- Now calculate line number after adding the text
     local current_line_idx = #self.line - 1
@@ -106,9 +104,7 @@ function Renderer:_render_nested_row_in_row(component, current_col)
 
   -- Render the nested row's children inline
   for _, child in ipairs(component.children) do
-    if child.tag == "row" then
-      error "Rows cannot be nested more than one level deep"
-    end
+    if child.tag == "row" then error("Rows cannot be nested more than one level deep") end
 
     local text_part, new_col = self:_render_child_in_row(child, current_col)
     if text_part then
@@ -193,9 +189,7 @@ function Renderer:_render_column_in_row(component, current_col)
     if line_content and line_content ~= "" then
       -- Pad current line to reach column start position
       local padding_needed = column_start_col - #current_line
-      if padding_needed > 0 then
-        current_line = current_line .. string.rep(" ", padding_needed)
-      end
+      if padding_needed > 0 then current_line = current_line .. string.rep(" ", padding_needed) end
 
       -- Append column content
       self.line[target_line_idx] = current_line .. line_content
@@ -243,9 +237,7 @@ function Renderer:_render_row(component)
       local temp_renderer = Renderer.new()
       temp_renderer:render(child)
       column_height = #temp_renderer.line
-      if column_height > max_lines_in_row then
-        max_lines_in_row = column_height
-      end
+      if column_height > max_lines_in_row then max_lines_in_row = column_height end
     else
       max_lines_in_row = math.max(max_lines_in_row, 1)
     end
@@ -264,9 +256,7 @@ function Renderer:_render_row(component)
       local target_line_idx = self.flag.row_base_line + 1
       local current_line = self.line[target_line_idx] or ""
       local padding_needed = current_col - #current_line
-      if padding_needed > 0 then
-        current_line = current_line .. string.rep(" ", padding_needed)
-      end
+      if padding_needed > 0 then current_line = current_line .. string.rep(" ", padding_needed) end
       self.line[target_line_idx] = current_line .. text_part
     end
     current_col = new_col or current_col

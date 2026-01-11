@@ -1,8 +1,8 @@
-local Path = require "fyler.lib.path"
-local async = require "fyler.lib.async"
-local config = require "fyler.config"
-local helper = require "fyler.views.finder.helper"
-local util = require "fyler.lib.util"
+local Path = require("fyler.lib.path")
+local async = require("fyler.lib.async")
+local config = require("fyler.config")
+local helper = require("fyler.views.finder.helper")
+local util = require("fyler.lib.util")
 
 local M = {}
 
@@ -13,9 +13,7 @@ local M = {}
 local Finder = {}
 Finder.__index = Finder
 
-function Finder.new(uri)
-  return setmetatable({ uri = uri }, Finder)
-end
+function Finder.new(uri) return setmetatable({ uri = uri }, Finder) end
 
 ---@param name string
 function Finder:action(name)
@@ -28,22 +26,18 @@ end
 function Finder:action_wrap(user_mappings)
   local actions = {}
   for keys, fn in pairs(user_mappings) do
-    actions[keys] = function()
-      fn(self)
-    end
+    actions[keys] = function() fn(self) end
   end
   return actions
 end
 
 ---@param name string
 ---@param ... any
-function Finder:action_call(name, ...)
-  self:action(name)(...)
-end
+function Finder:action_call(name, ...) self:action(name)(...) end
 
 ---@deprecated
 function Finder:exec_action(...)
-  vim.notify "'exec_action' is deprecated use 'call_action'"
+  vim.notify("'exec_action' is deprecated use 'call_action'")
   self:action_call(...)
 end
 
@@ -57,10 +51,10 @@ end
 
 ---@param kind WinKind
 function Finder:open(kind)
-  local indent = require "fyler.views.finder.indent"
+  local indent = require("fyler.views.finder.indent")
 
-  local rev_maps = config.rev_maps "finder"
-  local usr_maps = config.usr_maps "finder"
+  local rev_maps = config.rev_maps("finder")
+  local usr_maps = config.usr_maps("finder")
   local view_cfg = config.view_cfg("finder", kind)
 
   -- stylua: ignore start
@@ -130,35 +124,25 @@ function Finder:open(kind)
 end
 
 ---@return string
-function Finder:getrwd()
-  return util.select_n(1, helper.parse_protocol_uri(self.uri))
-end
+function Finder:getrwd() return util.select_n(1, helper.parse_protocol_uri(self.uri)) end
 
 ---@return string
-function Finder:getcwd()
-  return Path.new(assert(self.files, "files is require").root_path):os_path()
-end
+function Finder:getcwd() return Path.new(assert(self.files, "files is require").root_path):os_path() end
 
 function Finder:cursor_node_entry()
   local entry
   vim.api.nvim_win_call(self.win.winid, function()
     local ref_id = helper.parse_ref_id(vim.api.nvim_get_current_line())
-    if ref_id then
-      entry = vim.deepcopy(self.files:node_entry(ref_id))
-    end
+    if ref_id then entry = vim.deepcopy(self.files:node_entry(ref_id)) end
   end)
   return entry
 end
 
 function Finder:close()
-  if self.win then
-    self.win:hide()
-  end
+  if self.win then self.win:hide() end
 end
 
-function Finder:navigate(...)
-  self.files:navigate(...)
-end
+function Finder:navigate(...) self.files:navigate(...) end
 
 -- Change `self.files` instance to provided directory path
 ---@param path string
@@ -167,16 +151,14 @@ function Finder:change_root(path)
   assert(Path.new(path):is_directory(), "cannot change to non-directory path")
 
   self.watcher:disable(true)
-  self.files = require("fyler.views.finder.files").new {
+  self.files = require("fyler.views.finder.files").new({
     path = path,
     open = true,
     finder = self,
     name = vim.fn.fnamemodify(path, ":t"),
-  }
+  })
 
-  if self.win then
-    self.win:update_title(string.format(" %s ", path))
-  end
+  if self.win then self.win:update_title(string.format(" %s ", path)) end
 
   return self
 end
@@ -188,9 +170,7 @@ function Finder:dispatch_refresh(opts)
   -- Smart file system calculation, Use cache if not `opts.update` mentioned
   local get_table = async.wrap(function(onupdate)
     if opts.force_update then
-      return self.files:update(function(_, this)
-        onupdate(this:totable())
-      end)
+      return self.files:update(function(_, this) onupdate(this:totable()) end)
     end
 
     return onupdate(self.files:totable())
@@ -199,9 +179,10 @@ function Finder:dispatch_refresh(opts)
   async.void(function()
     local files_table = get_table()
     vim.schedule(function()
-      require("fyler.views.finder.ui").files(files_table, function(component, options)
-        self.win.ui:render(component, options, opts.onrender)
-      end)
+      require("fyler.views.finder.ui").files(
+        files_table,
+        function(component, options) self.win.ui:render(component, options, opts.onrender) end
+      )
     end)
   end)
 end
@@ -209,23 +190,15 @@ end
 function Finder:clamp_cursor()
   local cur = vim.api.nvim_get_current_line()
   local ref_id = helper.parse_ref_id(cur)
-  if not ref_id then
-    return
-  end
+  if not ref_id then return end
 
   local _, ub = string.find(cur, ref_id)
-  if not self.win:has_valid_winid() then
-    return
-  end
+  if not self.win:has_valid_winid() then return end
 
   local row, col = self.win:get_cursor()
-  if not (row and col) then
-    return
-  end
+  if not (row and col) then return end
 
-  if col <= ub then
-    self.win:set_cursor(row, ub + 1)
-  end
+  if col <= ub then self.win:set_cursor(row, ub + 1) end
 end
 
 local function run_mutation(operations)
@@ -261,9 +234,7 @@ local CONFIRMATION_THRESHOLDS = { create = 5, delete = 0, move = 1, copy = 1 }
 ---@return boolean
 local function can_skip_confirmation(operations)
   local count = { create = 0, delete = 0, move = 0, copy = 0 }
-  util.tbl_each(operations, function(o)
-    count[o.type] = (count[o.type] or 0) + 1
-  end)
+  util.tbl_each(operations, function(o) count[o.type] = (count[o.type] or 0) + 1 end)
 
   -- stylua: ignore start
   return count.copy   <= CONFIRMATION_THRESHOLDS.copy
@@ -273,14 +244,10 @@ local function can_skip_confirmation(operations)
   -- stylua: ignore end
 end
 
-local get_confirmation = async.wrap(vim.schedule_wrap(function(...)
-  require("fyler.input").confirm.open(...)
-end))
+local get_confirmation = async.wrap(vim.schedule_wrap(function(...) require("fyler.input").confirm.open(...) end))
 
 local function should_mutate(operations, cwd)
-  if config.values.views.finder.confirm_simple and can_skip_confirmation(operations) then
-    return true
-  end
+  if config.values.views.finder.confirm_simple and can_skip_confirmation(operations) then return true end
 
   return get_confirmation(require("fyler.views.finder.ui").operations(util.tbl_map(operations, function(operation)
     local result = vim.deepcopy(operation)
@@ -297,9 +264,7 @@ end
 function Finder:dispatch_mutation()
   async.void(function()
     local operations = self.files:diff_with_buffer()
-    if vim.tbl_isempty(operations) then
-      return self:dispatch_refresh()
-    end
+    if vim.tbl_isempty(operations) then return self:dispatch_refresh() end
 
     if should_mutate(operations, require("fyler.lib.path").new(self:getcwd())) then
       M.navigate(run_mutation(operations), { force_update = true })
@@ -315,42 +280,34 @@ function M.instance(uri)
   uri = assert(helper.normalize_uri(uri), "Faulty URI")
 
   local finder = instances[uri]
-  if finder then
-    return finder
-  end
+  if finder then return finder end
 
   local path = helper.parse_protocol_uri(uri) --[[@as string]]
 
   finder = Finder.new(uri)
   finder.watcher = require("fyler.views.finder.watcher").new(finder)
-  finder.files = require("fyler.views.finder.files").new {
+  finder.files = require("fyler.views.finder.files").new({
     open = true,
     path = path,
     name = Path.new(path):parent():posix_path(),
     finder = finder,
-  }
+  })
 
   instances[uri] = finder
   return instances[uri]
 end
 
 ---@param fn fun(uri: string)
-function M.each_finder(fn)
-  util.tbl_each(instances, fn)
-end
+function M.each_finder(fn) util.tbl_each(instances, fn) end
 
 ---@param uri string|nil
 ---@param kind WinKind|nil
-function M.open(uri, kind)
-  M.instance(uri):open(kind or config.values.views.finder.win.kind)
-end
+function M.open(uri, kind) M.instance(uri):open(kind or config.values.views.finder.win.kind) end
 
 local function _select(opts, handler)
   if opts.filter then
     util.tbl_each(opts.filter, function(uri)
-      if helper.is_protocol_uri(uri) then
-        handler(uri)
-      end
+      if helper.is_protocol_uri(uri) then handler(uri) end
     end)
   else
     M.each_finder(handler)
@@ -358,9 +315,7 @@ local function _select(opts, handler)
 end
 
 M.close = vim.schedule_wrap(function(opts)
-  _select(opts or {}, function(uri)
-    M.instance(uri):close()
-  end)
+  _select(opts or {}, function(uri) M.instance(uri):close() end)
 end)
 
 ---@param uri string|nil
@@ -375,9 +330,7 @@ M.toggle = vim.schedule_wrap(function(uri, kind)
 end)
 
 M.focus = vim.schedule_wrap(function(opts)
-  _select(opts or {}, function(uri)
-    M.instance(uri).win:focus()
-  end)
+  _select(opts or {}, function(uri) M.instance(uri).win:focus() end)
 end)
 
 -- TODO: Can futher optimize by determining whether `files:navgiate` did any change or not?
@@ -387,39 +340,25 @@ M.navigate = vim.schedule_wrap(function(path, opts)
 
   local set_cursor = vim.schedule_wrap(function(finder, ref_id)
     if finder:isopen() and ref_id then
-      vim.api.nvim_win_call(finder.win.winid, function()
-        vim.fn.search(string.format("/%05d ", ref_id))
-      end)
+      vim.api.nvim_win_call(finder.win.winid, function() vim.fn.search(string.format("/%05d ", ref_id)) end)
     end
   end)
 
   _select(opts, function(uri)
     local finder = M.instance(uri)
-    if not finder:isopen() then
-      return
-    end
+    if not finder:isopen() then return end
 
-    local update_table = async.wrap(function(...)
-      finder.files:update(...)
-    end)
+    local update_table = async.wrap(function(...) finder.files:update(...) end)
 
-    local navigate_path = async.wrap(function(...)
-      finder:navigate(...)
-    end)
+    local navigate_path = async.wrap(function(...) finder:navigate(...) end)
 
     async.void(function()
-      if opts.force_update then
-        update_table()
-      end
+      if opts.force_update then update_table() end
 
       local ref_id
-      if path then
-        ref_id = util.select_n(2, navigate_path(vim.fn.fnamemodify(Path.new(path):posix_path(), ":p")))
-      end
+      if path then ref_id = util.select_n(2, navigate_path(vim.fn.fnamemodify(Path.new(path):posix_path(), ":p"))) end
 
-      opts.onrender = function()
-        set_cursor(finder, ref_id)
-      end
+      opts.onrender = function() set_cursor(finder, ref_id) end
 
       finder:dispatch_refresh(opts)
     end)

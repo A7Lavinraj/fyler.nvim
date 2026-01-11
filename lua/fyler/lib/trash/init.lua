@@ -1,6 +1,6 @@
 local M = setmetatable({}, {
   __index = function(_, key)
-    local Path = require "fyler.lib.path"
+    local Path = require("fyler.lib.path")
     if Path.is_windows() then
       return require("fyler.lib.trash.windows")[key]
     elseif Path.is_macos() then

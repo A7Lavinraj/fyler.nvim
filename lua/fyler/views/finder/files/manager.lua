@@ -1,4 +1,4 @@
-local util = require "fyler.lib.util"
+local util = require("fyler.lib.util")
 
 ---@class Entry
 ---@field ref_id integer
@@ -16,14 +16,10 @@ Entry.__index = Entry
 
 ---@param opts EntryOpts
 ---@return Entry
-function Entry.new(opts)
-  return setmetatable(util.tbl_merge_force({}, opts), Entry)
-end
+function Entry.new(opts) return setmetatable(util.tbl_merge_force({}, opts), Entry) end
 
 ---@return boolean
-function Entry:is_directory()
-  return self.type == "directory"
-end
+function Entry:is_directory() return self.type == "directory" end
 
 ---@class EntryManager
 ---@field _entries table<integer, Entry>
@@ -58,9 +54,7 @@ end
 function EntryManager:set(opts)
   local key = opts.link or opts.path
 
-  if self._path_to_ref[key] then
-    return self._path_to_ref[key]
-  end
+  if self._path_to_ref[key] then return self._path_to_ref[key] end
 
   opts.ref_id = self._next_ref_id
   self._next_ref_id = self._next_ref_id + 1

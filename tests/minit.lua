@@ -6,12 +6,10 @@ vim.opt.laststatus = 0
 vim.opt.cmdheight = 0
 vim.opt.fillchars = { eob = " " }
 
-vim.cmd "hi! clear"
+vim.cmd("hi! clear")
 
 local mock_title = function(x)
-  if type(x) ~= "string" then
-    return x
-  end
+  if type(x) ~= "string" then return x end
   local path = x:gsub("^.*/.temp/data", "MOCK_ROOT/data")
   return vim.fs.normalize(path)
 end
@@ -32,24 +30,17 @@ vim.api.nvim_win_set_config = function(win_id, config)
   return nvim_win_set_config_orig(win_id, config)
 end
 
-local M = dofile "bin/setup_deps.lua"
+local M = dofile("bin/setup_deps.lua")
 
 ---@param t table
 ---@return table
 local function map(t)
-  return vim
-    .iter(t)
-    :map(function(dep)
-      return dep:match "/(.*)$"
-    end)
-    :totable()
+  return vim.iter(t):map(function(dep) return dep:match("/(.*)$") end):totable()
 end
 
 for _, dep in ipairs(map(M.dependencies)) do
   local path = vim.fs.joinpath(M.get_dir(), "repo", dep)
-  if vim.fn.isdirectory(path) == 1 then
-    vim.opt.runtimepath:prepend(path)
-  end
+  if vim.fn.isdirectory(path) == 1 then vim.opt.runtimepath:prepend(path) end
 end
 
-vim.opt.runtimepath:prepend "."
+vim.opt.runtimepath:prepend(".")

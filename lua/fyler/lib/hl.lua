@@ -1,9 +1,7 @@
 local M = {}
 
 ---@param dec integer
-local function to_hex(dec)
-  return string.format("%06X", math.max(0, math.min(0xFFFFFF, math.floor(dec))))
-end
+local function to_hex(dec) return string.format("%06X", math.max(0, math.min(0xFFFFFF, math.floor(dec)))) end
 
 ---@param name string
 ---@return string|nil
