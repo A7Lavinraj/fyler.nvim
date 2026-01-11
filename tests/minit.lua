@@ -1,8 +1,12 @@
 vim.bo.readonly = true
+
+vim.opt.background = "dark"
 vim.opt.statusline = " "
 vim.opt.laststatus = 0
 vim.opt.cmdheight = 0
 vim.opt.fillchars = { eob = " " }
+
+vim.cmd "hi! clear"
 
 local mock_title = function(x)
   if type(x) ~= "string" then
