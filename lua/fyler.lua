@@ -87,9 +87,9 @@ function M.setup(opts)
   -- Fyler.API: Focus finder view
   M.focus = finder.focus
 
-  -- Fyler.API: Focuses given file path or alternate buffer
+  -- Fyler.API: Focuses given file path
   M.navigate = function(path)
-    finder.navigate(path, { force_refresh = true })
+    finder.navigate(path)
   end
 end
 

@@ -1,3 +1,4 @@
+local Path = require "fyler.lib.path"
 local config = require "fyler.config"
 local util = require "fyler.lib.util"
 
@@ -20,7 +21,7 @@ function Watcher:start(dir)
     return
   end
 
-  if vim.fn.isdirectory(dir) == 0 then
+  if not Path.new(dir):is_directory() then
     self.paths[dir] = nil
     return
   end
@@ -57,10 +58,7 @@ function Watcher:start(dir)
     end
 
     util.debounce(string.format("watcher:%d_%d_%s", self.finder.win.winid, self.finder.win.bufnr, dir), 200, function()
-      self.finder:dispatch_refresh {
-        force_update = true,
-        force_refresh = true,
-      }
+      self.finder:dispatch_refresh { force_update = true }
     end)
   end)
 
@@ -78,7 +76,7 @@ function Watcher:stop(dir)
     return
   end
 
-  if vim.fn.isdirectory(dir) == 0 then
+  if not Path.new(dir):is_directory() then
     self.paths[dir] = nil
     return
   end

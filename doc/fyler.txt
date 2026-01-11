@@ -119,10 +119,7 @@ To know more about plugin customization. visit:
       hooks = {},
       integrations = {
         icon = "mini_icons",
-        winpick = {
-          provider = "none",
-          opts = {},
-        },
+        winpick = "none",
       },
       views = {
         finder = {
@@ -198,6 +195,7 @@ To know more about plugin customization. visit:
               filetype = "fyler",
               shiftwidth = 2,
               syntax = "fyler",
+              swapfile = false,
             },
             kind = "replace",
             kinds = {

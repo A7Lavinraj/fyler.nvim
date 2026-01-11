@@ -1,303 +1,259 @@
 local Path = require "fyler.lib.path"
-local Trie = require "fyler.lib.structs.trie"
+local helper = require "fyler.views.finder.helper"
 local util = require "fyler.lib.util"
 
----@class ResolverNode
----@field create boolean|nil
----@field delete boolean|nil
----@field move string[]|nil
----@field copy string[]|nil
----@field entry_type string|nil
-
 ---@class Resolver
----@field trie Trie
----@field processed table<string, boolean>
----@field root_path string
+---@field files Files
 local Resolver = {}
 Resolver.__index = Resolver
 
----@param root_path string
+function Resolver.new(files)
+  return setmetatable({ files = files }, Resolver)
+end
+
 ---@return Resolver
-function Resolver.new(root_path)
-  local instance = {
-    trie = Trie.new(),
-    processed = {},
-    root_path = root_path,
-  }
-  setmetatable(instance, Resolver)
-  return instance
-end
+function Resolver:parse_buffer()
+  local lines = util.filter_bl(vim.api.nvim_buf_get_lines(self.files.finder.win.bufnr, 0, -1, false))
+  local root_entry = self.files.manager:get(self.files.trie.value)
+  local parsed_buffer = { ref_id = root_entry.ref_id, path = root_entry.path, children = {} }
 
----@param path string
----@return string[]
-function Resolver:path_to_segments(path)
-  local normalized = Path.new(path):normalize()
+  local parents = require("fyler.lib.structs.stack").new()
+  parents:push { node = parsed_buffer, indentation = -1 }
 
-  if not vim.startswith(normalized, self.root_path) then
-    local segments = vim.split(normalized, "/")
-    return util.filter_bl(segments)
-  end
+  for _, line in ipairs(lines) do
+    local name = helper.parse_name(line)
+    local ref_id = helper.parse_ref_id(line)
+    local indent_level = helper.parse_indent_level(line)
 
-  local relative = normalized:sub(#self.root_path + 1)
-  if relative:sub(1, 1) == "/" then
-    relative = relative:sub(2)
-  end
-
-  if relative == "" then
-    return {}
-  end
-
-  return util.filter_bl(vim.split(relative, "/"))
-end
-
----@param segments string[]
----@return string
-function Resolver:segments_to_path(segments)
-  if #segments == 0 then
-    return self.root_path
-  end
-  return self.root_path .. "/" .. table.concat(segments, "/")
-end
-
----@param path string
----@param op_type "create"|"delete"|"move"|"copy"
----@param value boolean|string
----@param entry_type string|nil
-function Resolver:mark_operation(path, op_type, value, entry_type)
-  local path_obj = Path.new(path)
-  local is_dir = path_obj:is_directory()
-  local normalized = path_obj:normalize()
-
-  local segments = self:path_to_segments(normalized)
-  local node = self.trie:find(segments)
-
-  if not node then
-    node = self.trie:insert(segments, {})
-  end
-
-  if not node.value then
-    node.value = {}
-  end
-
-  if op_type == "create" then
-    node.value.create = true
-    node.value.entry_type = entry_type or (is_dir and "directory" or "file")
-  elseif op_type == "delete" then
-    node.value.delete = true
-  elseif op_type == "move" or op_type == "copy" then
-    if not node.value[op_type] then
-      node.value[op_type] = {}
-    end
-    -- value is a string (destination path) for move/copy
-    if type(value) == "string" then
-      local dest_normalized = Path.new(value):normalize()
-      table.insert(node.value[op_type], dest_normalized)
-    end
-  end
-end
-
----@param parsed_tree table
----@return table<integer, string[]>
-function Resolver:analyze_and_mark_creates(parsed_tree)
-  local ref_id_locations = {}
-
-  local function traverse(node)
-    if node.ref_id then
-      if not ref_id_locations[node.ref_id] then
-        ref_id_locations[node.ref_id] = {}
+    while true do
+      local parent = parents:top()
+      if not (parent.indentation >= indent_level and parents:size() > 1) then
+        break
       end
-      -- Normalize path before storing
-      local normalized = Path.new(node.path):normalize()
-      table.insert(ref_id_locations[node.ref_id], normalized)
+      parents:pop()
+    end
+
+    local parent = parents:top()
+    local node = {
+      ref_id = ref_id,
+      path = Path.new(parent.node.path):join(name):posix_path(),
+      children = {},
+    }
+
+    parents:push { node = node, indentation = indent_level }
+    parent.node.type = "directory"
+    table.insert(parent.node.children, node)
+  end
+
+  self.parsed_buffer = parsed_buffer
+
+  return self
+end
+
+---@return Resolver
+function Resolver:parse_actions()
+  self.old_ref = {}
+  self.new_ref = {}
+  self.raw_act = {}
+
+  ---@param node table
+  local function traverse_tree(node, fn)
+    if fn(node) then
+      for _, child in pairs(node.children or {}) do
+        traverse_tree(child, fn)
+      end
+    end
+  end
+
+  traverse_tree(self.files.trie, function(node)
+    local node_entry = assert(self.files.manager:get(node.value), "Unexpected nil node entry")
+    self.old_ref[node.value] = node_entry.link or node_entry.path
+    return node_entry.open
+  end)
+
+  traverse_tree(self.parsed_buffer, function(node)
+    if not node.ref_id then
+      table.insert(self.raw_act, { type = "create", path = node.path })
     else
-      local has_children = node.children and #node.children > 0
-      if not has_children then
-        -- Detect type from original path (before normalization)
-        local entry_type = Path.new(node.path):is_directory() and "directory" or "file"
-        self:mark_operation(node.path, "create", true, entry_type)
+      self.new_ref[node.ref_id] = self.new_ref[node.ref_id] or {}
+      table.insert(self.new_ref[node.ref_id], node.path)
+    end
+    return true
+  end)
+
+  for ref_id, path in pairs(self.old_ref) do
+    if not self.new_ref[ref_id] then
+      table.insert(self.raw_act, { type = "delete", path = path })
+    end
+  end
+
+  for ref_id, old_path in pairs(self.old_ref) do
+    (function()
+      local paths = self.new_ref[ref_id]
+      if not paths or #paths == 0 then
+        return
       end
-    end
 
-    for _, child in ipairs(node.children or {}) do
-      traverse(child)
-    end
-  end
+      if #paths == 1 then
+        table.insert(self.raw_act, { type = "move", src = old_path, dst = paths[1] })
+        return
+      end
 
-  traverse(parsed_tree)
-  return ref_id_locations
-end
-
----@param files Files
----@param ref_id_locations table<integer, string[]>
----@return table<integer, string>
-function Resolver:mark_deletes_and_track_current(files, ref_id_locations)
-  local current_ref_to_path = {}
-
-  local function traverse(node)
-    local entry = files.manager:get(node.value)
-    local normalized = Path.new(entry.link or entry.path):normalize()
-    current_ref_to_path[node.value] = normalized
-
-    if not ref_id_locations[node.value] then
-      self:mark_operation(entry.link or entry.path, "delete", true)
-    end
-
-    if not entry.open then
-      return
-    end
-
-    for _, child in pairs(node.children) do
-      traverse(child)
-    end
-  end
-
-  traverse(files.trie)
-  return current_ref_to_path
-end
-
----@param ref_id_locations table<integer, string[]>
----@param current_ref_to_path table<integer, string>
-function Resolver:mark_moves_and_copies(ref_id_locations, current_ref_to_path)
-  for ref_id, parsed_paths in pairs(ref_id_locations) do
-    local current_path = current_ref_to_path[ref_id]
-
-    if current_path then
-      if #parsed_paths == 1 then
-        if parsed_paths[1] ~= current_path then
-          self:mark_operation(current_path, "move", parsed_paths[1])
-        end
-      elseif #parsed_paths > 1 then
-        local current_in_destinations = util.if_any(parsed_paths, function(p)
-          return p == current_path
-        end)
-
-        if current_in_destinations then
-          for _, dest_path in ipairs(parsed_paths) do
-            if dest_path ~= current_path then
-              self:mark_operation(current_path, "copy", dest_path)
-            end
+      if util.if_any(paths, function(path)
+        return path == old_path
+      end) then
+        util.tbl_each(
+          util.tbl_filter(paths, function(path)
+            return not (path == old_path)
+          end),
+          function(path)
+            table.insert(self.raw_act, { type = "copy", src = old_path, dst = path })
           end
-        else
-          self:mark_operation(current_path, "move", parsed_paths[1])
-          for i = 2, #parsed_paths do
-            self:mark_operation(current_path, "copy", parsed_paths[i])
-          end
+        )
+      else
+        for i = 1, #paths - 1 do
+          table.insert(self.raw_act, { type = "copy", src = old_path, dst = paths[i] })
+        end
+        table.insert(self.raw_act, { type = "move", src = old_path, dst = paths[#paths] })
+      end
+    end)()
+  end
+
+  return self
+end
+
+local function is_automatic_child_move(child_act, parent_act)
+  if child_act.type ~= "move" or parent_act.type ~= "move" then
+    return false
+  end
+  if not Path.new(child_act.src):is_descendant_of(parent_act.src) then
+    return false
+  end
+  return child_act.dst == Path.new(parent_act.dst):join(Path.new(parent_act.src):relative(child_act.src)):posix_path()
+end
+
+local function transform_child_after_parent_move(child_act, parent_act)
+  if child_act.type == "move" and parent_act.type == "move" then
+    if Path.new(child_act.src):is_descendant_of(parent_act.src) then
+      return {
+        type = child_act.type,
+        src = Path.new(parent_act.dst):join(Path.new(parent_act.src):relative(child_act.src)):posix_path(),
+        dst = child_act.dst,
+      }
+    end
+  end
+  return child_act
+end
+
+function Resolver:final_actions()
+  local filtered = {}
+  local seen = {}
+
+  for _, act in ipairs(self.raw_act) do
+    (function()
+      if (act.type == "move" or act.type == "copy") and act.src == act.dst then
+        return
+      end
+
+      local key = act.type .. ":" .. (act.path or (act.src .. ">" .. act.dst))
+      if seen[key] then
+        return
+      end
+      seen[key] = true
+
+      table.insert(filtered, act)
+    end)()
+  end
+
+  local pruned = {}
+  for _, act in ipairs(filtered) do
+    local is_redundant = false
+
+    for j = 1, #pruned do
+      local prev = pruned[j]
+
+      if is_automatic_child_move(act, prev) then
+        is_redundant = true
+        break
+      end
+
+      if prev.type == "delete" then
+        local prev_path = prev.path
+        local curr_src = act.src or act.path
+
+        if curr_src and Path.new(curr_src):is_descendant_of(prev_path) then
+          is_redundant = true
+          break
+        end
+      end
+    end
+
+    if not is_redundant then
+      table.insert(pruned, act)
+    end
+  end
+
+  local transformed = {}
+  for i, act in ipairs(pruned) do
+    local transformed_act = act
+
+    for j = 1, i - 1 do
+      transformed_act = transform_child_after_parent_move(transformed_act, pruned[j])
+    end
+
+    table.insert(transformed, transformed_act)
+  end
+
+  local graph = {}
+  local in_degree = {}
+
+  for i = 1, #transformed do
+    graph[i] = {}
+    in_degree[i] = 0
+  end
+
+  for i = 1, #transformed do
+    local act = transformed[i]
+
+    if act.src then
+      for j = 1, i - 1 do
+        local prev = transformed[j]
+        local prev_writes_to = prev.dst or prev.path
+
+        if prev_writes_to == act.src then
+          table.insert(graph[j], i)
+          in_degree[i] = in_degree[i] + 1
         end
       end
     end
   end
-end
 
----@param files Files
----@param parsed_tree table
----@return table[]
-function Resolver:resolve(files, parsed_tree)
-  local ref_id_locations = self:analyze_and_mark_creates(parsed_tree)
-
-  local current_ref_to_path = self:mark_deletes_and_track_current(files, ref_id_locations)
-
-  self:mark_moves_and_copies(ref_id_locations, current_ref_to_path)
-
-  local operations = {}
-  self:traverse_and_collect(self.trie, operations, {})
-
-  return operations
-end
-
----@param node Trie
----@param operations table[]
----@param segments string[]
-function Resolver:traverse_and_collect(node, operations, segments)
-  local path = self:segments_to_path(segments)
-
-  -- Jump to copy/move destinations first
-  if node.value then
-    if node.value.copy then
-      for _, dst_path in ipairs(node.value.copy) do
-        self:resolve_destination(dst_path, operations)
-      end
+  local queue = {}
+  for i = 1, #transformed do
+    if in_degree[i] == 0 then
+      table.insert(queue, i)
     end
+  end
 
-    if node.value.move then
-      for _, dst_path in ipairs(node.value.move) do
-        self:resolve_destination(dst_path, operations)
+  local result = {}
+  while #queue > 0 do
+    local idx = table.remove(queue, 1)
+    table.insert(result, transformed[idx])
+
+    for _, neighbor in ipairs(graph[idx]) do
+      in_degree[neighbor] = in_degree[neighbor] - 1
+      if in_degree[neighbor] == 0 then
+        table.insert(queue, neighbor)
       end
     end
   end
 
-  -- PRE-ORDER: Emit CREATE operations BEFORE processing children
-  if not self.processed[path] and node.value and node.value.create then
-    self.processed[path] = true
-    self:emit_operations(node, path, operations)
-  end
-
-  -- Process children
-  for name, child in pairs(node.children) do
-    local child_segments = {}
-    for i = 1, #segments do
-      child_segments[i] = segments[i]
-    end
-    child_segments[#child_segments + 1] = name
-
-    self:traverse_and_collect(child, operations, child_segments)
-  end
-
-  -- POST-ORDER: Emit MOVE/COPY/DELETE operations AFTER processing children
-  if not self.processed[path] then
-    self.processed[path] = true
-    self:emit_operations(node, path, operations)
-  end
+  return result
 end
 
----@param dst_path string
----@param operations table[]
-function Resolver:resolve_destination(dst_path, operations)
-  if self.processed[dst_path] then
-    return
-  end
-
-  local segments = self:path_to_segments(dst_path)
-  local node = self.trie:find(segments)
-
-  if node then
-    self.processed[dst_path] = true
-    self:emit_operations(node, dst_path, operations)
-  end
-end
-
----@param node Trie
----@param path string
----@param operations table[]
-function Resolver:emit_operations(node, path, operations)
-  if not node.value then
-    return
-  end
-
-  local ops = node.value
-
-  -- Priority 1: COPY operations
-  if ops.copy then
-    for _, dst in ipairs(ops.copy) do
-      table.insert(operations, { type = "copy", src = path, dst = dst })
-    end
-  end
-
-  -- Priority 2: MOVE operations
-  if ops.move then
-    for _, dst in ipairs(ops.move) do
-      table.insert(operations, { type = "move", src = path, dst = dst })
-    end
-  end
-
-  -- Priority 3: DELETE
-  if ops.delete then
-    table.insert(operations, { type = "delete", path = path })
-  end
-
-  -- Priority 4: CREATE
-  if ops.create then
-    table.insert(operations, { type = "create", path = path, entry_type = ops.entry_type or "file" })
-  end
+---@return table
+function Resolver:resolve()
+  return self:parse_buffer():parse_actions():final_actions()
 end
 
 return Resolver

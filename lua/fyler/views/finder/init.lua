@@ -1,3 +1,4 @@
+local Path = require "fyler.lib.path"
 local async = require "fyler.lib.async"
 local config = require "fyler.config"
 local helper = require "fyler.views.finder.helper"
@@ -108,18 +109,16 @@ function Finder:open(kind)
       if helper.is_protocol_uri(bufname) then
         return self:dispatch_refresh({ force_update = true })
       end
-      return M.navigate( bufname,
-        { filter = { self.win.bufname },
-        force_update = true,
-        force_refresh = true
-      })
+      return M.navigate( bufname, { filter = { self.win.bufname }, force_update = true })
     end,
     right         = view_cfg.win.right,
-    title         = string.format(" %s ", self:getcwd()),
+    title         = string.format("%s", self:getcwd()),
     title_pos     = view_cfg.win.title_pos,
     top           = view_cfg.win.top,
     user_autocmds = {
-      ["DispatchRefresh"] = function() self:dispatch_refresh() end,
+      ["DispatchRefresh"] = function()
+        self:dispatch_refresh({ force_update = true })
+      end,
     },
     user_mappings = self:action_wrap(usr_maps),
     width         = view_cfg.win.width,
@@ -137,7 +136,7 @@ end
 
 ---@return string
 function Finder:getcwd()
-  return assert(self.files, "files is require").root_path
+  return Path.new(assert(self.files, "files is require").root_path):os_path()
 end
 
 function Finder:cursor_node_entry()
@@ -165,15 +164,14 @@ end
 ---@param path string
 function Finder:change_root(path)
   assert(path, "cannot change directory without path")
-  assert(vim.fn.isdirectory(path) == 1, "cannot change to non-directory path")
+  assert(Path.new(path):is_directory(), "cannot change to non-directory path")
 
   self.watcher:disable(true)
   self.files = require("fyler.views.finder.files").new {
     path = path,
     open = true,
-    type = "directory",
-    name = vim.fn.fnamemodify(path, ":t"),
     finder = self,
+    name = vim.fn.fnamemodify(path, ":t"),
   }
 
   if self.win then
@@ -230,38 +228,12 @@ function Finder:clamp_cursor()
   end
 end
 
-local mutation_handlers = (function()
-  local async_fs = setmetatable({}, {
-    __index = function(_, k)
-      return async.wrap(function(...)
-        require("fyler.lib.fs")[k](...)
-      end)
-    end,
-  })
-
-  return {
-    create = function(op)
-      async_fs.create(op.path, op.entry_type == "directory")
-      return op.path
-    end,
-
-    delete = function(op)
-      (config.values.views.finder.delete_to_trash and async_fs.trash or async_fs.delete)(op.path)
-    end,
-
-    move = function(op)
-      async_fs.move(op.src, op.dst)
-      return op.dst
-    end,
-
-    copy = function(op)
-      async_fs.copy(op.src, op.dst)
-      return op.dst
-    end,
-  }
-end)()
-
 local function run_mutation(operations)
+  local async_handler = async.wrap(function(operation, _next)
+    assert(require("fyler.lib.fs")[operation.type], "Unknown operation")(operation, _next)
+    return operation.path or operation.dst
+  end)
+
   local mutation_text_format = "Mutating (%d/%d)"
   local spinner = require("fyler.lib.spinner").new(string.format(mutation_text_format, 0, #operations))
   local last_focusable_operation = nil
@@ -269,9 +241,11 @@ local function run_mutation(operations)
   spinner:start()
 
   for i, operation in ipairs(operations) do
-    local handler = mutation_handlers[operation.type]
-    if handler then
-      last_focusable_operation = handler(operation) or last_focusable_operation
+    local err = async_handler(operation)
+    if err then
+      vim.schedule_wrap(vim.notify)(err, vim.log.levels.ERROR, { title = "Fyler" })
+    else
+      last_focusable_operation = (operation.path or operation.dst) or last_focusable_operation
     end
 
     spinner:set_text(string.format(mutation_text_format, i, #operations))
@@ -322,13 +296,13 @@ end
 
 function Finder:dispatch_mutation()
   async.void(function()
-    local operations = self.files:diff_with_lines(vim.api.nvim_buf_get_lines(self.win.bufnr, 0, -1, false))
+    local operations = self.files:diff_with_buffer()
     if vim.tbl_isempty(operations) then
       return self:dispatch_refresh()
     end
 
     if should_mutate(operations, require("fyler.lib.path").new(self:getcwd())) then
-      M.navigate(run_mutation(operations) or "", { force_update = true, force_refresh = true })
+      M.navigate(run_mutation(operations), { force_update = true })
     end
   end)
 end
@@ -338,8 +312,6 @@ local instances = {}
 ---@param uri string|nil
 ---@return Finder
 function M.instance(uri)
-  local Path = require "fyler.lib.path"
-
   uri = assert(helper.normalize_uri(uri), "Faulty URI")
 
   local finder = instances[uri]
@@ -354,8 +326,7 @@ function M.instance(uri)
   finder.files = require("fyler.views.finder.files").new {
     open = true,
     path = path,
-    type = "directory",
-    name = Path.new(path):parent():normalize(),
+    name = Path.new(path):parent():posix_path(),
     finder = finder,
   }
 
@@ -413,9 +384,6 @@ end)
 ---@param path string|nil
 M.navigate = vim.schedule_wrap(function(path, opts)
   opts = opts or {}
-  if not path or path == "" then
-    return
-  end
 
   local set_cursor = vim.schedule_wrap(function(finder, ref_id)
     if finder:isopen() and ref_id then
@@ -431,14 +399,12 @@ M.navigate = vim.schedule_wrap(function(path, opts)
       return
     end
 
-    local target_path = require("fyler.lib.path").new(path):normalize()
-    local node_entry = finder:cursor_node_entry()
-    if node_entry and node_entry.path == target_path then
-      return
-    end
-
     local update_table = async.wrap(function(...)
       finder.files:update(...)
+    end)
+
+    local navigate_path = async.wrap(function(...)
+      finder:navigate(...)
     end)
 
     async.void(function()
@@ -446,17 +412,16 @@ M.navigate = vim.schedule_wrap(function(path, opts)
         update_table()
       end
 
-      finder:navigate(target_path, function(_, ref_id)
-        if not opts.force_refresh then
-          return set_cursor(finder, ref_id)
-        end
+      local ref_id
+      if path then
+        ref_id = util.select_n(2, navigate_path(vim.fn.fnamemodify(Path.new(path):posix_path(), ":p")))
+      end
 
-        return finder:dispatch_refresh {
-          onrender = function()
-            set_cursor(finder, ref_id)
-          end,
-        }
-      end)
+      opts.onrender = function()
+        set_cursor(finder, ref_id)
+      end
+
+      finder:dispatch_refresh(opts)
     end)
   end)
 end)

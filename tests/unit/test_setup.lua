@@ -1,26 +1,60 @@
-local MiniTest = require "mini.test"
 local util = require "tests.util"
 
-local eq = MiniTest.expect.equality
-local child = util.new_child_neovim()
+local eq = util.eq
+local nv = util.new_neovim()
 
-local T = MiniTest.new_set {
+local T = util.new_set {
   hooks = {
     pre_case = function()
-      child.setup()
-      child.load("fyler", {})
-
-      child.o.laststatus = 3
-      child.o.showtabline = 0
-      child.o.cmdheight = 0
+      nv.setup()
+      nv.mload "fyler"
     end,
-    post_case = child.stop,
+    post_case = nv.stop,
   },
 }
 
-T["configuration"] = function()
+T["Side Effects"] = function()
+  local validate_hl_group = function(name, ref)
+    util.mt(nv.cmd_capture("hi " .. name), ref)
+  end
+
+  eq(nv.fn.hlexists "FylerBlue", 1)
+  eq(nv.fn.hlexists "FylerGreen", 1)
+  eq(nv.fn.hlexists "FylerGrey", 1)
+  eq(nv.fn.hlexists "FylerRed", 1)
+  eq(nv.fn.hlexists "FylerYellow", 1)
+
+  eq(nv.fn.hlexists "FylerFSDirectoryIcon", 1)
+  eq(nv.fn.hlexists "FylerFSDirectoryName", 1)
+
+  eq(nv.fn.hlexists "FylerFSFile", 1)
+  eq(nv.fn.hlexists "FylerFSLink", 1)
+
+  eq(nv.fn.hlexists "FylerGitAdded", 1)
+  eq(nv.fn.hlexists "FylerGitConflict", 1)
+  eq(nv.fn.hlexists "FylerGitDeleted", 1)
+  eq(nv.fn.hlexists "FylerGitIgnored", 1)
+  eq(nv.fn.hlexists "FylerGitModified", 1)
+  eq(nv.fn.hlexists "FylerGitRenamed", 1)
+  eq(nv.fn.hlexists "FylerGitStaged", 1)
+  eq(nv.fn.hlexists "FylerGitUnstaged", 1)
+  eq(nv.fn.hlexists "FylerGitUntracked", 1)
+
+  eq(nv.fn.hlexists "FylerWinPick", 1)
+
+  validate_hl_group("FylerNormal", "links to Normal")
+  validate_hl_group("FylerNormalNC", "links to NormalNC")
+  validate_hl_group("FylerBorder", "links to FylerNormal")
+  validate_hl_group("FylerIndentMarker", "links to FylerGrey")
+  validate_hl_group("FylerDiagnosticError", "links to DiagnosticError")
+  validate_hl_group("FylerDiagnosticWarn", "links to DiagnosticWarn")
+  validate_hl_group("FylerDiagnosticInfo", "links to DiagnosticInfo")
+  validate_hl_group("FylerDiagnosticHint", "links to DiagnosticHint")
+end
+
+T["Setup Config"] = function()
   local expect_config = function(field, value)
-    eq(child.lua_get([[require('fyler.config').values.]] .. field), value)
+    eq(nv.lua_get([[require('fyler.config').values.]] .. field), value)
   end
 
   expect_config("hooks.on_delete", vim.NIL)
@@ -28,15 +62,13 @@ T["configuration"] = function()
   expect_config("hooks.on_highlight", vim.NIL)
 
   expect_config("integrations.icon", "mini_icons")
+  expect_config("integrations.winpick", "none")
 
   expect_config("views.finder.close_on_select", true)
   expect_config("views.finder.confirm_simple", false)
   expect_config("views.finder.default_explorer", false)
   expect_config("views.finder.delete_to_trash", false)
-  expect_config("views.finder.follow_current_file", true)
-
-  expect_config("views.finder.columns_order[1]", "git")
-  expect_config("views.finder.columns_order[2]", "diagnostic")
+  expect_config("views.finder.columns_order", { "git", "diagnostic" })
 
   expect_config("views.finder.columns.git.enabled", true)
   expect_config("views.finder.columns.git.symbols.Untracked", "?")
@@ -79,16 +111,22 @@ T["configuration"] = function()
   expect_config("views.finder.mappings_opts.noremap", true)
   expect_config("views.finder.mappings_opts.silent", true)
 
+  expect_config("views.finder.follow_current_file", true)
+
   expect_config("views.finder.watcher.enabled", false)
 
-  expect_config("views.finder.win.border", vim.o.winborder == "" and "single" or vim.o.winborder)
+  expect_config("views.finder.win.border", "single")
 
-  expect_config("views.finder.win.buf_opts.filetype", "fyler")
-  expect_config("views.finder.win.buf_opts.syntax", "fyler")
+  expect_config("views.finder.win.buf_opts.bufhidden", "hide")
   expect_config("views.finder.win.buf_opts.buflisted", false)
   expect_config("views.finder.win.buf_opts.buftype", "acwrite")
   expect_config("views.finder.win.buf_opts.expandtab", true)
+  expect_config("views.finder.win.buf_opts.filetype", "fyler")
   expect_config("views.finder.win.buf_opts.shiftwidth", 2)
+  expect_config("views.finder.win.buf_opts.syntax", "fyler")
+  expect_config("views.finder.win.buf_opts.swapfile", false)
+
+  expect_config("views.finder.win.kind", "replace")
 
   expect_config("views.finder.win.kinds.float.height", "70%")
   expect_config("views.finder.win.kinds.float.width", "70%")
@@ -98,21 +136,19 @@ T["configuration"] = function()
   expect_config("views.finder.win.kinds.split_above.height", "70%")
 
   expect_config("views.finder.win.kinds.split_above_all.height", "70%")
+
   expect_config("views.finder.win.kinds.split_above_all.win_opts.winfixheight", true)
-
-  expect_config("views.finder.win.kinds.split_below.height", "70%")
-
-  expect_config("views.finder.win.kinds.split_below_all.height", "70%")
-  expect_config("views.finder.win.kinds.split_below_all.win_opts.winfixheight", true)
 
   expect_config("views.finder.win.kinds.split_left.width", "30%")
 
   expect_config("views.finder.win.kinds.split_left_most.width", "30%")
+
   expect_config("views.finder.win.kinds.split_left_most.win_opts.winfixwidth", true)
 
   expect_config("views.finder.win.kinds.split_right.width", "30%")
 
   expect_config("views.finder.win.kinds.split_right_most.width", "30%")
+
   expect_config("views.finder.win.kinds.split_right_most.win_opts.winfixwidth", true)
 
   expect_config("views.finder.win.win_opts.concealcursor", "nvic")
@@ -120,9 +156,9 @@ T["configuration"] = function()
   expect_config("views.finder.win.win_opts.cursorline", false)
   expect_config("views.finder.win.win_opts.number", false)
   expect_config("views.finder.win.win_opts.relativenumber", false)
+  expect_config("views.finder.win.win_opts.signcolumn", "no")
   expect_config("views.finder.win.win_opts.winhighlight", "Normal:FylerNormal,NormalNC:FylerNormalNC")
   expect_config("views.finder.win.win_opts.wrap", false)
-  expect_config("views.finder.win.win_opts.signcolumn", "no")
 end
 
 return T

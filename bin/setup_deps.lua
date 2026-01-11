@@ -14,7 +14,7 @@ function M.get_dir(name)
   if not name then
     return temp
   end
-  return vim.fs.joinpath(temp, name)
+  return vim.fn.fnamemodify(vim.fs.joinpath(temp, name), ":p")
 end
 
 assert(vim.fn.executable "git" == 1, "git not installed!")

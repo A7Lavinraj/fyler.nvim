@@ -30,7 +30,7 @@ function M.normalize_uri(uri)
     tab = tostring(vim.api.nvim_get_current_tabpage())
   end
 
-  return M.build_protocol_uri(require("fyler.lib.path").new(dir):normalize(), tab)
+  return M.build_protocol_uri(require("fyler.lib.path").new(dir):posix_path(), tab)
 end
 
 ---@param uri string

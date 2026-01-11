@@ -1,3 +1,4 @@
+local Path = require "fyler.lib.path"
 local config = require "fyler.config"
 local helper = require "fyler.views.finder.helper"
 
@@ -67,7 +68,10 @@ end
 function M.n_select_tab(self)
   return function()
     _select(self, function(path)
-      vim.cmd.tabedit { args = { path }, mods = { keepalt = false } }
+      vim.cmd.tabedit {
+        args = { vim.fn.fnameescape(Path.new(path):os_path()) },
+        mods = { keepalt = false },
+      }
     end, { winpick = false })
   end
 end
@@ -75,7 +79,10 @@ end
 function M.n_select_v_split(self)
   return function()
     _select(self, function(path)
-      vim.cmd.vsplit { args = { path }, mods = { keepalt = false } }
+      vim.cmd.vsplit {
+        args = { vim.fn.fnameescape(Path.new(path):os_path()) },
+        mods = { keepalt = false },
+      }
     end)
   end
 end
@@ -83,7 +90,10 @@ end
 function M.n_select_split(self)
   return function()
     _select(self, function(path)
-      vim.cmd.split { args = { path }, mods = { keepalt = false } }
+      vim.cmd.split {
+        args = { vim.fn.fnameescape(Path.new(path):os_path()) },
+        mods = { keepalt = false },
+      }
     end)
   end
 end
@@ -91,7 +101,10 @@ end
 function M.n_select(self)
   return function()
     _select(self, function(path)
-      vim.cmd.edit { args = { vim.fn.fnameescape(path) }, mods = { keepalt = false } }
+      vim.cmd.edit {
+        args = { vim.fn.fnameescape(Path.new(path):os_path()) },
+        mods = { keepalt = false },
+      }
     end)
   end
 end

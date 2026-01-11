@@ -208,10 +208,7 @@ function config.defaults()
     hooks = {},
     integrations = {
       icon = "mini_icons",
-      winpick = {
-        provider = "none",
-        opts = {},
-      },
+      winpick = "none",
     },
     views = {
       finder = {
@@ -287,6 +284,7 @@ function config.defaults()
             filetype = "fyler",
             shiftwidth = 2,
             syntax = "fyler",
+            swapfile = false,
           },
           kind = "replace",
           kinds = {

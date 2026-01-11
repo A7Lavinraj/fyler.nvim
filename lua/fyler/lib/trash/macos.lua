@@ -3,23 +3,25 @@ local fs = require "fyler.lib.fs"
 
 local M = {}
 
-function M.get_trash_dir(callback)
+---@param opts {callback: function}
+function M.get_trash_dir(opts)
   vim.schedule(function()
-    callback(Path.new(vim.uv.os_homedir() or vim.fn.expand "$HOME"):join(".Trash"):normalize())
+    opts.callback(Path.new(vim.uv.os_homedir() or vim.fn.expand "$HOME"):join(".Trash"):os_path())
   end)
 end
 
----@param basename string
-function M.next_name(dir, basename)
-  if not Path.new(dir):join(basename):exists() then
-    return basename
+---@param opts {dir: string, basename: string}
+---@return string
+function M.next_name(opts)
+  if not Path.new(opts.dir):join(opts.basename):exists() then
+    return opts.basename
   end
 
-  local name, extension = vim.fn.fnamemodify(basename, ":r"), vim.fn.fnamemodify(basename, ":e")
+  local name, extension = vim.fn.fnamemodify(opts.basename, ":r"), vim.fn.fnamemodify(opts.basename, ":e")
   local counter = 1
   while true do
     local candidate = string.format("%s (%d).%s", name, counter, extension)
-    if not Path.new(dir):join(candidate):exists() then
+    if not Path.new(opts.dir):join(candidate):exists() then
       return candidate
     end
 
@@ -27,17 +29,25 @@ function M.next_name(dir, basename)
   end
 end
 
----@param path string
----@param callback function
-function M.dump(path, callback)
-  M.get_trash_dir(function(trash_dir)
-    local path_to_trash = Path.new(path)
-    local target_path = Path.new(trash_dir):join(M.next_name(trash_dir, path_to_trash:basename()))
+---@param opts {path: string, callback: function}
+function M.dump(opts)
+  M.get_trash_dir {
+    callback = function(trash_dir)
+      local path_to_trash = Path.new(opts.path)
+      local target_name = M.next_name {
+        dir = trash_dir,
+        basename = path_to_trash:basename(),
+      }
+      local target_path = Path.new(trash_dir):join(target_name)
 
-    fs.mv(path_to_trash:normalize(), target_path:normalize(), function(err)
-      callback(err)
-    end)
-  end)
+      fs.mv({
+        src = path_to_trash:os_path(),
+        dst = target_path:os_path(),
+      }, function(err)
+        opts.callback(err)
+      end)
+    end,
+  }
 end
 
 return M
