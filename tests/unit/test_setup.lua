@@ -1,42 +1,42 @@
-local util = require("tests.util")
+local helper = require("tests.helper")
 
-local eq = util.eq
-local mp = util.mp
-local nv = util.new_neovim()
+local equal = helper.equal
+local match_pattern = helper.match_pattern
+local nvim = helper.new_neovim()
 
-local T = util.new_set({
+local T = helper.new_set({
   hooks = {
-    pre_case = nv.setup,
-    post_case = nv.stop,
+    pre_case = nvim.setup,
+    post_case = nvim.stop,
   },
 })
 
 T["Side Effects"] = function()
-  local validate_hl_group = function(name, ref) util.mp(nv.cmd_capture("hi " .. name), ref) end
+  local validate_hl_group = function(name, ref) helper.match_pattern(nvim.cmd_capture("hi " .. name), ref) end
 
-  eq(nv.fn.hlexists("FylerBlue"), 1)
-  eq(nv.fn.hlexists("FylerGreen"), 1)
-  eq(nv.fn.hlexists("FylerGrey"), 1)
-  eq(nv.fn.hlexists("FylerRed"), 1)
-  eq(nv.fn.hlexists("FylerYellow"), 1)
+  equal(nvim.fn.hlexists("FylerBlue"), 1)
+  equal(nvim.fn.hlexists("FylerGreen"), 1)
+  equal(nvim.fn.hlexists("FylerGrey"), 1)
+  equal(nvim.fn.hlexists("FylerRed"), 1)
+  equal(nvim.fn.hlexists("FylerYellow"), 1)
 
-  eq(nv.fn.hlexists("FylerFSDirectoryIcon"), 1)
-  eq(nv.fn.hlexists("FylerFSDirectoryName"), 1)
+  equal(nvim.fn.hlexists("FylerFSDirectoryIcon"), 1)
+  equal(nvim.fn.hlexists("FylerFSDirectoryName"), 1)
 
-  eq(nv.fn.hlexists("FylerFSFile"), 1)
-  eq(nv.fn.hlexists("FylerFSLink"), 1)
+  equal(nvim.fn.hlexists("FylerFSFile"), 1)
+  equal(nvim.fn.hlexists("FylerFSLink"), 1)
 
-  eq(nv.fn.hlexists("FylerGitAdded"), 1)
-  eq(nv.fn.hlexists("FylerGitConflict"), 1)
-  eq(nv.fn.hlexists("FylerGitDeleted"), 1)
-  eq(nv.fn.hlexists("FylerGitIgnored"), 1)
-  eq(nv.fn.hlexists("FylerGitModified"), 1)
-  eq(nv.fn.hlexists("FylerGitRenamed"), 1)
-  eq(nv.fn.hlexists("FylerGitStaged"), 1)
-  eq(nv.fn.hlexists("FylerGitUnstaged"), 1)
-  eq(nv.fn.hlexists("FylerGitUntracked"), 1)
+  equal(nvim.fn.hlexists("FylerGitAdded"), 1)
+  equal(nvim.fn.hlexists("FylerGitConflict"), 1)
+  equal(nvim.fn.hlexists("FylerGitDeleted"), 1)
+  equal(nvim.fn.hlexists("FylerGitIgnored"), 1)
+  equal(nvim.fn.hlexists("FylerGitModified"), 1)
+  equal(nvim.fn.hlexists("FylerGitRenamed"), 1)
+  equal(nvim.fn.hlexists("FylerGitStaged"), 1)
+  equal(nvim.fn.hlexists("FylerGitUnstaged"), 1)
+  equal(nvim.fn.hlexists("FylerGitUntracked"), 1)
 
-  eq(nv.fn.hlexists("FylerWinPick"), 1)
+  equal(nvim.fn.hlexists("FylerWinPick"), 1)
 
   validate_hl_group("FylerNormal", "links to Normal")
   validate_hl_group("FylerNormalNC", "links to NormalNC")
@@ -49,7 +49,7 @@ T["Side Effects"] = function()
 end
 
 T["Setup Config"] = function()
-  local expect_config = function(field, value) eq(nv.lua_get([[require('fyler.config').values.]] .. field), value) end
+  local expect_config = function(field, value) equal(nvim.lua_get([[require('fyler.config').values.]] .. field), value) end
 
   expect_config("hooks.on_delete", vim.NIL)
   expect_config("hooks.on_rename", vim.NIL)
@@ -156,14 +156,14 @@ T["Setup Config"] = function()
 end
 
 T["Respects User Config"] = function()
-  nv.module_unload("fyler")
-  nv.module_load("fyler", { views = { finder = { mappings = { ["gc"] = "CloseView" } } } })
-  eq(nv.lua_get("require('fyler.config').values.views.finder.mappings['gc']"), "CloseView")
+  nvim.module_unload("fyler")
+  nvim.module_load("fyler", { views = { finder = { mappings = { ["gc"] = "CloseView" } } } })
+  equal(nvim.lua_get("require('fyler.config').values.views.finder.mappings['gc']"), "CloseView")
 end
 
 T["Ensures Colors"] = function()
-  nv.cmd("colorscheme default")
-  mp(nv.cmd_capture("hi FylerBorder"), "links to FylerNormal")
+  nvim.cmd("colorscheme default")
+  match_pattern(nvim.cmd_capture("hi FylerBorder"), "links to FylerNormal")
 end
 
 return T

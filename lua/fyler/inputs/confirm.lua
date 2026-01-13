@@ -31,11 +31,11 @@ function Confirm:open(options, message, onsubmit)
     mappings   = {
       [{ 'y', 'o', '<Enter>' }] = function()
         self.window:hide()
-        onsubmit(true)
+        pcall(onsubmit, true)
       end,
       [{ 'n', 'c', '<ESC>' }] = function()
         self.window:hide()
-        onsubmit(false)
+        pcall(onsubmit, false)
       end
     },
     autocmds   = {

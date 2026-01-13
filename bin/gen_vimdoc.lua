@@ -1,7 +1,5 @@
-local M = dofile("bin/setup_deps.lua")
-
-vim.opt.runtimepath:prepend(".")
-vim.opt.runtimepath:prepend(vim.fs.joinpath(M.get_dir("repo"), "mini.doc"))
+vim.opt.runtimepath:prepend(vim.fn.getcwd())
+vim.opt.runtimepath:prepend(vim.fs.joinpath(vim.fn.getcwd(), ".temp", "deps", "mini.doc"))
 
 local minidoc = require("mini.doc")
 

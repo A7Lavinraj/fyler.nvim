@@ -324,7 +324,7 @@ function cmd.create(opts, _next)
       return
     end
 
-    if opts.entry_type == "directory" then
+    if Path.new(opts.path):is_directory() then
       cmd.mkdir({ path = opts.path }, _next)
     else
       cmd.touch({ path = opts.path }, _next)

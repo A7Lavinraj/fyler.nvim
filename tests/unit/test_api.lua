@@ -1,17 +1,17 @@
-local util = require("tests.util")
+local helper = require("tests.helper")
 
-local nv = util.new_neovim()
-local eq = util.eq
-local mp = util.mp
+local nvim = helper.new_neovim()
+local equal = helper.equal
+local match_pattern = helper.match_pattern
 
-local T = util.new_set({
+local T = helper.new_set({
   hooks = {
-    pre_case = nv.setup,
-    post_case = nv.stop,
+    pre_case = function() nvim.setup({ views = { finder = { columns_order = {} } } }) end,
+    post_case = nvim.stop,
   },
 })
 
-T["Each WinKind Can"] = util.new_set({
+T["Each WinKind Can"] = helper.new_set({
   parametrize = {
     { "float" },
     { "replace" },
@@ -27,64 +27,57 @@ T["Each WinKind Can"] = util.new_set({
 })
 
 T["Each WinKind Can"]["Open Without Arguments"] = function(kind)
-  util.tmp_ctx(function(path)
-    nv.module_unload("fyler")
-    nv.module_load("fyler", { views = { finder = { win = { kind = kind } } } })
-    nv.fn.chdir(path)
-    nv.forward_lua("require('fyler').open")()
-    nv.wait(50)
-    nv.dbg_screen()
-  end)
+  local path = helper.make_mock_dir()
+  nvim.module_unload("fyler")
+  nvim.module_load("fyler", { views = { finder = { win = { kind = kind } } } })
+  nvim.fn.chdir(path)
+  nvim.forward_lua("require('fyler').open")()
+  vim.uv.sleep(50)
 end
 
 T["Each WinKind Can"]["Open With Arguments"] = function(kind)
-  util.tmp_ctx(function(path)
-    nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
-    nv.wait(50)
-    nv.expect_screenshot()
-  end)
+  local path = helper.make_mock_dir()
+  nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
+  vim.uv.sleep(50)
+  nvim.expect_screenshot()
 end
 
 T["Each WinKind Can"]["Open And Handles Sudden Undo"] = function(kind)
-  util.tmp_ctx(function(path)
-    nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
-    nv.wait(50)
-    nv.type_keys("u")
-    eq(#nv.get_lines(0, 0, -1, false) > 1, true)
-    eq(nv.cmd_capture("1messages"), "Already at oldest change")
-  end)
+  local path = helper.make_mock_dir()
+  nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
+  vim.uv.sleep(50)
+  nvim.type_keys("u")
+  equal(#nvim.get_lines(0, 0, -1, false) > 1, true)
+  equal(nvim.cmd_capture("1messages"), "Already at oldest change")
 end
 
 T["Each WinKind Can"]["Open And Jump To Current File"] = function(kind)
-  util.tmp_ctx(function(path)
-    nv.cmd("edit " .. vim.fs.joinpath(path, "b-file"))
-    nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
-    nv.wait(50)
-    mp(nv.api.nvim_get_current_line(), "b-file")
-  end)
+  local path = helper.make_mock_dir()
+  nvim.cmd("edit " .. vim.fs.joinpath(path, "b-file"))
+  nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
+  vim.uv.sleep(50)
+  match_pattern(nvim.api.nvim_get_current_line(), "b-file")
 end
 
 T["Each WinKind Can"]["Toggle With Arguments"] = function(kind)
-  util.tmp_ctx(function(path)
-    nv.forward_lua("require('fyler').toggle")({ dir = path, kind = kind })
-    nv.wait(50)
-    nv.expect_screenshot()
-    nv.forward_lua("require('fyler').toggle")({ dir = path, kind = kind })
-    nv.wait(50)
-    nv.expect_screenshot()
-  end)
+  local path = helper.make_mock_dir()
+  nvim.forward_lua("require('fyler').toggle")({ dir = path, kind = kind })
+  vim.uv.sleep(50)
+  nvim.expect_screenshot()
+  nvim.forward_lua("require('fyler').toggle")({ dir = path, kind = kind })
+  vim.uv.sleep(50)
+  nvim.expect_screenshot()
 end
 
 T["Each WinKind Can"]["Navigate"] = function(kind)
-  util.tmp_ctx(function(path)
-    nv.forward_lua("require('fyler').open")({ dir = path, kind = kind })
-    nv.wait(50)
-    nv.forward_lua("require('fyler').navigate")(
-      vim.fn.fnamemodify(vim.fs.joinpath(path, "a-dir", "aa-dir", "aaa-file"), ":p")
-    )
-    nv.wait(50)
-    nv.expect_screenshot()
-  end)
+  local path = helper.make_mock_dir()
+  nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
+  vim.uv.sleep(50)
+  nvim.forward_lua("require('fyler').navigate")(
+    vim.fn.fnamemodify(vim.fs.joinpath(path, "a-dir", "aa-dir", "aaa-file"), ":p")
+  )
+  vim.uv.sleep(50)
+  nvim.expect_screenshot()
 end
 
 return T
