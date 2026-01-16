@@ -1,4 +1,4 @@
-local util = require "fyler.lib.util"
+local util = require("fyler.lib.util")
 
 ---@class UiComponentOption
 ---@field highlight string|nil
@@ -27,9 +27,7 @@ function UiComponent.new(fn)
       return this
     end,
 
-    __index = function(_, name)
-      return rawget(UiComponent, name)
-    end,
+    __index = function(_, name) return rawget(UiComponent, name) end,
   }
 
   setmetatable(instance, mt)
@@ -44,18 +42,14 @@ function UiComponent.new_async(fn)
     local args = { ... }
     local cb = table.remove(args)
 
-    table.insert(args, function(this, ...)
-      cb(setmetatable(this, { __index = UiComponent }), ...)
-    end)
+    table.insert(args, function(this, ...) cb(setmetatable(this, { __index = UiComponent }), ...) end)
 
     fn(util.unpack(args))
   end
 end
 
 function UiComponent:width()
-  if self.tag == "text" then
-    return string.len(self.value or self.option.virt_text[1][1])
-  end
+  if self.tag == "text" then return string.len(self.value or self.option.virt_text[1][1]) end
 
   if self.tag == "row" then
     local width = 0
@@ -70,29 +64,23 @@ function UiComponent:width()
     local width = 0
     for i = 1, #self.children do
       local c_width = self.children[i]:width()
-      if c_width > width then
-        width = c_width
-      end
+      if c_width > width then width = c_width end
     end
 
     return width
   end
 
-  error "UNIMPLEMENTED"
+  error("UNIMPLEMENTED")
 end
 
 function UiComponent:height()
-  if self.tag == "text" then
-    return 1
-  end
+  if self.tag == "text" then return 1 end
 
   if self.tag == "row" then
     local max_height = 0
     for i = 1, #self.children do
       local child_height = self.children[i]:height()
-      if child_height > max_height then
-        max_height = child_height
-      end
+      if child_height > max_height then max_height = child_height end
     end
     return max_height
   end
@@ -105,7 +93,7 @@ function UiComponent:height()
     return total_height
   end
 
-  error "UNIMPLEMENTED"
+  error("UNIMPLEMENTED")
 end
 
 return UiComponent

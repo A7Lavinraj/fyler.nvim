@@ -54,9 +54,7 @@ function Process:spawn_async(on_exit)
 
   self.handle, self.pid = vim.uv.spawn(self.path, options, on_exit)
 
-  vim.uv.write(options.stdio[1], self.stdin or "", function()
-    vim.uv.close(options.stdio[1])
-  end)
+  vim.uv.write(options.stdio[1], self.stdin or "", function() vim.uv.close(options.stdio[1]) end)
 
   vim.uv.read_start(options.stdio[2], function(_, data)
     self.stdout = self.stdout or ""
@@ -80,19 +78,13 @@ function Process:spawn_async(on_exit)
 end
 
 ---@return boolean
-function Process:is_running()
-  return vim.uv.is_active(self.handle) == true
-end
+function Process:is_running() return vim.uv.is_active(self.handle) == true end
 
 ---@return string
-function Process:out()
-  return self.stdout
-end
+function Process:out() return self.stdout end
 
 ---@return string
-function Process:err()
-  return self.stderr
-end
+function Process:err() return self.stderr end
 
 function Process:stdout_iter()
   if not self.stdout then
@@ -103,24 +95,18 @@ function Process:stdout_iter()
   local i = 0
   return function()
     i = i + 1
-    if i <= #lines then
-      return i, lines[i]
-    end
+    if i <= #lines then return i, lines[i] end
   end
 end
 
 function Process:stderr_iter()
-  if not self.stderr then
-    return
-  end
+  if not self.stderr then return end
 
   local lines = vim.split(self.stderr, "\n")
   local i = 0
   return function()
     i = i + 1
-    if i <= #lines then
-      return i, lines[i]
-    end
+    if i <= #lines then return i, lines[i] end
   end
 end
 

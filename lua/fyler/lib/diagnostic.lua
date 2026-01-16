@@ -1,5 +1,5 @@
-local config = require "fyler.config"
-local util = require "fyler.lib.util"
+local config = require("fyler.config")
+local util = require("fyler.lib.util")
 
 local M = {}
 
@@ -20,9 +20,7 @@ local severity_hl = {
 local function count_diagnostics_by_path()
   local lookup = {}
 
-  if not vim.diagnostic then
-    return lookup
-  end
+  if not vim.diagnostic then return lookup end
 
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     local name = vim.api.nvim_buf_get_name(bufnr)
@@ -61,17 +59,13 @@ function M.map_entries(_, entries)
     local normalized_path = vim.fs.normalize(path)
 
     local info = diag_by_path[normalized_path]
-    if not info or not info.highest_severity then
-      return { "", nil }
-    end
+    if not info or not info.highest_severity then return { "", nil } end
 
     local sev = info.highest_severity
     local sev_name = severity_names[sev]
     local sev_symbol = sev_name and symbols[sev_name] or ""
     local count = info.counts[sev] or 0
-    if count == 0 then
-      return { "", nil }
-    end
+    if count == 0 then return { "", nil } end
 
     -- local text = sev_symbol .. count
     local text = sev_symbol
@@ -85,9 +79,7 @@ function M.map_entries(_, entries)
 end
 
 function M.map_entries_async(root_dir, entries, onmapped)
-  vim.schedule(function()
-    onmapped(M.map_entries(root_dir, entries))
-  end)
+  vim.schedule(function() onmapped(M.map_entries(root_dir, entries)) end)
 end
 
 return M

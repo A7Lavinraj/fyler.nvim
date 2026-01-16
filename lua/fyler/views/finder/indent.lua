@@ -1,4 +1,4 @@
-local config = require "fyler.config"
+local config = require("fyler.config")
 
 local M = {}
 
@@ -8,18 +8,14 @@ local snapshots = {}
 ---@param winid integer
 ---@param bufnr integer
 ---@return string
-local function make_key(winid, bufnr)
-  return winid .. "_" .. bufnr
-end
+local function make_key(winid, bufnr) return winid .. "_" .. bufnr end
 
 ---@param text string
 ---@return boolean
 local function only_spaces_or_tabs(text)
   for i = 1, #text do
     local byte = string.byte(text, i)
-    if byte ~= 32 and byte ~= 9 then
-      return false
-    end
+    if byte ~= 32 and byte ~= 9 then return false end
   end
   return true
 end
@@ -47,14 +43,10 @@ end
 ---@return integer indent
 local function compute_indent(bufnr, lnum, snapshot)
   local cached = snapshot[lnum]
-  if cached then
-    return cached
-  end
+  if cached then return cached end
 
   local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, lnum - 1, lnum, false)
-  if not ok or not lines or #lines == 0 then
-    return 0
-  end
+  if not ok or not lines or #lines == 0 then return 0 end
 
   local line = lines[1]
   local is_empty = #line == 0 or only_spaces_or_tabs(line)
@@ -86,28 +78,20 @@ local function next_non_empty_indent(snapshot, lnum)
   local next_lnum = lnum + 1
   while true do
     local next_indent = snapshot[next_lnum]
-    if next_indent == nil then
-      return nil
-    end
-    if next_indent > 0 then
-      return next_indent
-    end
+    if next_indent == nil then return nil end
+    if next_indent > 0 then return next_indent end
     next_lnum = next_lnum + 1
   end
 end
 
 local function setup_provider()
-  if M.indent_ns then
-    return
-  end
+  if M.indent_ns then return end
 
-  M.indent_ns = vim.api.nvim_create_namespace "fyler_indentscope"
+  M.indent_ns = vim.api.nvim_create_namespace("fyler_indentscope")
 
   vim.api.nvim_set_decoration_provider(M.indent_ns, {
     on_start = function()
-      if not config.values.views.finder.indentscope.enabled then
-        return false
-      end
+      if not config.values.views.finder.indentscope.enabled then return false end
 
       for key in pairs(M.windows) do
         snapshots[key] = {}
@@ -118,9 +102,7 @@ local function setup_provider()
     on_win = function(_, winid, bufnr, topline, botline)
       local key = make_key(winid, bufnr)
       local win = M.windows[key]
-      if not win or not win:has_valid_bufnr() or win.winid ~= winid or win.bufnr ~= bufnr then
-        return false
-      end
+      if not win or not win:has_valid_bufnr() or win.winid ~= winid or win.bufnr ~= bufnr then return false end
 
       local snapshot = snapshots[key] or {}
       snapshots[key] = snapshot
@@ -135,20 +117,14 @@ local function setup_provider()
     on_line = function(_, winid, bufnr, row)
       local key = make_key(winid, bufnr)
       local win = M.windows[key]
-      if not win or not win:has_valid_bufnr() or win.winid ~= winid or win.bufnr ~= bufnr then
-        return
-      end
+      if not win or not win:has_valid_bufnr() or win.winid ~= winid or win.bufnr ~= bufnr then return end
 
       local snapshot = snapshots[key]
-      if not snapshot then
-        return
-      end
+      if not snapshot then return end
 
       local lnum = row + 1
       local indent = snapshot[lnum]
-      if not indent or indent < INDENT_WIDTH then
-        return
-      end
+      if not indent or indent < INDENT_WIDTH then return end
 
       local next_indent = next_non_empty_indent(snapshot, lnum)
       local markers = config.values.views.finder.indentscope.markers
@@ -173,15 +149,11 @@ end
 
 ---@param win Win
 function M.attach(win)
-  if not config.values.views.finder.indentscope.enabled then
-    return
-  end
+  if not config.values.views.finder.indentscope.enabled then return end
 
   setup_provider()
 
-  if not M.windows then
-    M.windows = {}
-  end
+  if not M.windows then M.windows = {} end
 
   local key = make_key(win.winid, win.bufnr)
   M.windows[key] = win
@@ -189,9 +161,7 @@ end
 
 ---@param win Win
 function M.detach(win)
-  if not M.windows then
-    return
-  end
+  if not M.windows then return end
 
   local key = make_key(win.winid, win.bufnr)
   M.windows[key] = nil
@@ -203,9 +173,7 @@ function M.detach(win)
   end
 end
 
-function M.enable(win)
-  M.attach(win)
-end
+function M.enable(win) M.attach(win) end
 
 function M.disable()
   M.windows = {}

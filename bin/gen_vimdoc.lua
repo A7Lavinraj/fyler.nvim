@@ -1,9 +1,7 @@
-local M = dofile "bin/setup_deps.lua"
+vim.opt.runtimepath:prepend(vim.fn.getcwd())
+vim.opt.runtimepath:prepend(vim.fs.joinpath(vim.fn.getcwd(), ".temp", "deps", "mini.doc"))
 
-vim.opt.runtimepath:prepend "."
-vim.opt.runtimepath:prepend(vim.fs.joinpath(M.get_dir "repo", "mini.doc"))
-
-local minidoc = require "mini.doc"
+local minidoc = require("mini.doc")
 
 minidoc.setup()
 
@@ -17,21 +15,11 @@ minidoc.generate(
     hooks = {
       file = function() end,
       sections = {
-        ["@signature"] = function(s)
-          s:remove()
-        end,
-        ["@return"] = function(s)
-          s.parent:clear_lines()
-        end,
-        ["@alias"] = function(s)
-          s.parent:clear_lines()
-        end,
-        ["@class"] = function(s)
-          s.parent:clear_lines()
-        end,
-        ["@param"] = function(s)
-          s.parent:clear_lines()
-        end,
+        ["@signature"] = function(s) s:remove() end,
+        ["@return"] = function(s) s.parent:clear_lines() end,
+        ["@alias"] = function(s) s.parent:clear_lines() end,
+        ["@class"] = function(s) s.parent:clear_lines() end,
+        ["@param"] = function(s) s.parent:clear_lines() end,
       },
     },
   }

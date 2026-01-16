@@ -1,4 +1,4 @@
-vim.cmd [[
+vim.cmd([[
   if exists("b:current_syntax")
     finish
   endif
@@ -6,4 +6,4 @@ vim.cmd [[
   syn match FylerReferenceId /\/\d* / conceal
 
   let b:current_syntax = "Fyler"
-]]
+]])

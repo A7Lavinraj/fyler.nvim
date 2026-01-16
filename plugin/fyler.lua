@@ -1,5 +1,5 @@
 vim.api.nvim_create_user_command("Fyler", function(args)
-  local util = require "fyler.lib.util"
+  local util = require("fyler.lib.util")
   local opts = {}
   for _, farg in ipairs(args.fargs) do
     local k, v = util.unpack(vim.split(farg, "="))
@@ -39,9 +39,7 @@ vim.api.nvim_create_user_command("Fyler", function(args)
       -- In the future, we may want to treat multiple lines as multiple directories to open, but it's not clear how
       -- opening multiple directories would work currently.
       local dir = vim.trim(range_lines[1])
-      if dir ~= "" then
-        opts.dir = dir
-      end
+      if dir ~= "" then opts.dir = dir end
     end
   end
 
@@ -50,19 +48,16 @@ end, {
   nargs = "*",
   range = true,
   complete = function(arglead, cmdline)
-    local util = require "fyler.lib.util"
-    if arglead:find "^kind=" then
-      return util.tbl_map(vim.tbl_keys(require("fyler.config").values.views.finder.win.kinds), function(kind_preset)
-        return string.format("kind=%s", kind_preset)
-      end)
+    local util = require("fyler.lib.util")
+    if arglead:find("^kind=") then
+      return util.tbl_map(
+        vim.tbl_keys(require("fyler.config").values.views.finder.win.kinds),
+        function(kind_preset) return string.format("kind=%s", kind_preset) end
+      )
     end
 
-    if arglead:find "^dir=" then
-      return { "dir=" .. (vim.uv or vim.loop).cwd() }
-    end
+    if arglead:find("^dir=") then return { "dir=" .. (vim.uv or vim.loop).cwd() } end
 
-    return util.tbl_filter({ "kind=", "dir=" }, function(arg)
-      return cmdline:match(arg) == nil
-    end)
+    return util.tbl_filter({ "kind=", "dir=" }, function(arg) return cmdline:match(arg) == nil end)
   end,
 })

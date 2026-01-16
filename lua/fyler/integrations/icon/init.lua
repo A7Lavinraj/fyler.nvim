@@ -12,9 +12,7 @@ setmetatable(M, {
 
     local icon_provider = require("fyler.integrations.icon." .. k)
 
-    return function(type, path)
-      return icon_provider.get(type, path)
-    end
+    return function(type, path) return icon_provider.get(type, path) end
   end,
 })
 

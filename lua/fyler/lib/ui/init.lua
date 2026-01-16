@@ -1,5 +1,5 @@
-local Component = require "fyler.lib.ui.component"
-local Renderer = require "fyler.lib.ui.renderer"
+local Component = require("fyler.lib.ui.component")
+local Renderer = require("fyler.lib.ui.renderer")
 
 ---@class Ui
 ---@field win Win
@@ -25,20 +25,20 @@ Ui.Row = Ui.Component.new(function(children)
   }
 end)
 
-Ui.Text = Ui.Component.new(function(value, option)
-  return {
-    tag = "text",
-    value = value,
-    option = option,
-    children = {},
-  }
-end)
+Ui.Text = Ui.Component.new(
+  function(value, option)
+    return {
+      tag = "text",
+      value = value,
+      option = option,
+      children = {},
+    }
+  end
+)
 
 ---@param win Win
 ---@return Ui
-function Ui.new(win)
-  return setmetatable({ win = win, renderer = Renderer.new() }, Ui)
-end
+function Ui.new(win) return setmetatable({ win = win, renderer = Renderer.new() }, Ui) end
 
 ---@param component UiComponent
 Ui.render = vim.schedule_wrap(function(self, component, ...)

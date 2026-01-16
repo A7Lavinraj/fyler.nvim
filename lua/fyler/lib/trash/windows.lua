@@ -1,12 +1,8 @@
-local Path = require "fyler.lib.path"
+local Path = require("fyler.lib.path")
 local M = {}
 
----@param path string
----@param callback function
-function M.dump(path, callback)
-  local _path = Path.new(path)
-  local abspath = _path:normalize()
-
+function M.dump(opts, _next)
+  local abspath = Path.new(opts.path):os_path()
   local ps_script = string.format(
     [[
       $timeoutSeconds = 30;
@@ -39,18 +35,18 @@ function M.dump(path, callback)
     abspath
   )
 
-  local Process = require "fyler.lib.process"
-  local proc = Process.new {
+  local Process = require("fyler.lib.process")
+  local proc = Process.new({
     path = "powershell",
     args = { "-NoProfile", "-NonInteractive", "-Command", ps_script },
-  }
+  })
 
   proc:spawn_async(function(code)
     vim.schedule(function()
       if code == 0 then
-        callback(nil)
+        pcall(_next)
       else
-        callback("failed to move to recycle bin: " .. (proc:err() or ""))
+        pcall(_next, "failed to move to recycle bin: " .. (proc:err() or ""))
       end
     end)
   end)

@@ -1,57 +1,52 @@
-local Path = require "fyler.lib.path"
-local hooks = require "fyler.hooks"
-local util = require "fyler.lib.util"
+local Path = require("fyler.lib.path")
+local hooks = require("fyler.hooks")
+local util = require("fyler.lib.util")
 
-local commands = {}
+local cmd = {}
 
-function commands.cwd()
-  return vim.uv.cwd()
-end
+function cmd.cwd() return vim.fn.getcwd() end
 
----@param path string
----@param data string|string[]
----@param callback function
-function commands.write(path, data, callback)
-  local _path = Path.new(path)
+function cmd.write(opts, _next)
+  local path = Path.new(opts.path):os_path()
+  local data = opts.data or {}
 
-  commands.mkdir(_path:parent():normalize(), { p = true }, function(err)
+  cmd.mkdir({
+    path = Path.new(path):parent():os_path(),
+    flags = { p = true },
+  }, function(err)
     if err then
-      return callback(err)
+      pcall(_next, err)
+      return
     end
 
-    vim.uv.fs_open(_path:normalize(), "w", 420, function(err_open, fd)
+    vim.uv.fs_open(path, "w", 420, function(err_open, fd)
       if err_open or not fd then
-        return callback(err_open or "Failed to open file")
+        pcall(_next, err_open)
+        return
       end
 
       vim.uv.fs_write(fd, data, -1, function(err_write, bytes)
         if not bytes then
           vim.uv.fs_close(fd, function()
-            commands.rm(_path:normalize(), nil, function()
-              callback(string.format("Failed to write to %s: %s", path, err_write))
-            end)
+            cmd.rm({
+              path = path,
+            }, function() pcall(_next, string.format("Failed to write to %s: %s", path, err_write)) end)
           end)
         else
-          vim.uv.fs_close(fd, function(err_close)
-            callback(err_close)
-          end)
+          vim.uv.fs_close(fd, function(err_close) pcall(_next, err_close) end)
         end
       end)
     end)
   end)
 end
 
----@param path string
----@param callback function
-function commands.ls(path, callback)
-  local _path = Path.new(path)
-  if not (_path:exists() and _path:is_directory()) then
-    return callback(nil, nil)
-  end
+function cmd.ls(opts, _next)
+  local path = Path.new(opts.path):os_path()
 
-  vim.uv.fs_opendir(_path:normalize(), function(err_open, dir)
+  vim.uv.fs_opendir(path, function(err_open, dir)
     if err_open or not dir then
-      return callback(err_open, nil)
+      pcall(_next, err_open, nil)
+      return
     end
 
     local contents = {}
@@ -59,9 +54,7 @@ function commands.ls(path, callback)
     local function poll_entries()
       vim.uv.fs_readdir(dir, function(err_read, entries)
         if err_read then
-          vim.uv.fs_closedir(dir, function()
-            callback(err_read, nil)
-          end)
+          vim.uv.fs_closedir(dir, function() pcall(_next, err_read, nil) end)
           return
         end
 
@@ -69,21 +62,28 @@ function commands.ls(path, callback)
           vim.list_extend(
             contents,
             util.tbl_map(entries, function(e)
-              local f = _path:join(e.name)
-              local p, t = f:res_link()
+              local entry_path_obj = Path.new(path):join(e.name)
+              local entry_path, entry_type = entry_path_obj:res_link()
               if e.type == "link" then
-                return { name = e.name, path = p, type = t or "file", link = f:normalize() }
+                return {
+                  name = e.name,
+                  path = entry_path,
+                  type = entry_type or "file",
+                  link = entry_path_obj:posix_path(),
+                }
               else
-                return { name = e.name, path = f:normalize(), type = e.type }
+                return {
+                  name = e.name,
+                  type = e.type,
+                  path = entry_path_obj:posix_path(),
+                }
               end
             end)
           )
 
           poll_entries() -- Continue reading
         else
-          vim.uv.fs_closedir(dir, function()
-            callback(nil, contents)
-          end)
+          vim.uv.fs_closedir(dir, function() pcall(_next, nil, contents) end)
         end
       end)
     end
@@ -92,80 +92,62 @@ function commands.ls(path, callback)
   end, 1000)
 end
 
----@param path string
----@param callback function
-function commands.touch(path, callback)
-  assert(path, "path is not provided")
+function cmd.touch(opts, _next)
+  local path = Path.new(opts.path):os_path()
 
-  local _path = Path.new(path)
-
-  vim.uv.fs_open(_path:normalize(), "a", 420, function(err_open, fd)
+  vim.uv.fs_open(path, "a", 420, function(err_open, fd)
     if err_open or not fd then
-      return callback(err_open or "Failed to open file")
+      pcall(_next, err_open)
+      return
     end
 
-    vim.uv.fs_close(fd, function(err_close)
-      callback(err_close)
-    end)
+    vim.uv.fs_close(fd, function(err_close) pcall(_next, err_close) end)
   end)
 end
 
----@param path string
----@param flags table|nil
----@param callback function
-function commands.mkdir(path, flags, callback)
-  if type(flags) == "function" then
-    callback = flags
-    flags = nil
-  end
-
-  assert(path, "path is not provided")
-
-  local _path = Path.new(path)
-  flags = flags or {}
+function cmd.mkdir(opts, _next)
+  local flags = opts.flags or {}
 
   if flags.p then
     local prefixes = {}
-    for _, prefix in _path:iter() do
+    for _, prefix in Path.new(opts.path):iter() do
       table.insert(prefixes, prefix)
     end
 
     local function create_next(index)
-      if index > #prefixes then
-        return callback(nil)
-      end
+      if index > #prefixes then return pcall(_next) end
 
-      commands.mkdir(prefixes[index], nil, function()
-        -- Ignore errors for parent dirs (they might exist)
+      if Path.new(prefixes[index]):exists() then
         create_next(index + 1)
-      end)
+      else
+        cmd.mkdir({ path = prefixes[index] }, function() create_next(index + 1) end)
+      end
     end
 
     create_next(1)
   else
-    vim.uv.fs_mkdir(_path:normalize(), 493, function(err)
-      callback(err)
-    end)
+    vim.uv.fs_mkdir(Path.new(opts.path):os_path(), 493, function(err) pcall(_next, err) end)
   end
 end
 
-local function _read_dir_iter(path, callback)
+local function _read_dir_iter(opts, _next)
+  local path = Path.new(opts.path):os_path()
+
   vim.uv.fs_opendir(path, function(err_open, dir)
     if err_open or not dir then
-      return callback(nil, function() end)
+      pcall(_next, nil, function() end)
+      return
     end
 
     vim.uv.fs_readdir(dir, function(err_read, entries)
       vim.uv.fs_closedir(dir, function()
         if err_read or not entries then
-          callback(nil, function() end)
+          pcall(_next, nil, function() end)
         else
           local i = 0
-          callback(nil, function()
+          pcall(_next, nil, function()
             i = i + 1
-            if i <= #entries then
-              return i, entries[i]
-            end
+            if i <= #entries then return i, entries[i] end
           end)
         end
       end)
@@ -173,26 +155,21 @@ local function _read_dir_iter(path, callback)
   end, 1000)
 end
 
----@param path string
----@param flags table|nil
----@param callback function
-function commands.rm(path, flags, callback)
-  if type(flags) == "function" then
-    callback = flags
-    flags = nil
-  end
+function cmd.rm(opts, _next)
+  local path = Path.new(opts.path):os_path()
+  local flags = opts.flags or {}
 
-  assert(path, "path is not provided")
-
-  local _path = Path.new(path)
   flags = flags or {}
 
-  if _path:is_directory() then
+  if Path.new(path):is_directory() then
     assert(flags.r, "cannot remove directory without -r flag: " .. path)
 
-    _read_dir_iter(_path:normalize(), function(err, iter)
+    _read_dir_iter({
+      path = path,
+    }, function(err, iter)
       if err then
-        return callback(err)
+        pcall(_next, err)
+        return
       end
 
       local entries = {}
@@ -202,15 +179,17 @@ function commands.rm(path, flags, callback)
 
       local function remove_next(index)
         if index > #entries then
-          vim.uv.fs_rmdir(_path:normalize(), function(err_rmdir)
-            callback(err_rmdir)
-          end)
+          vim.uv.fs_rmdir(path, function(err_rmdir) pcall(_next, err_rmdir) end)
           return
         end
 
-        commands.rm(_path:join(entries[index].name):normalize(), flags, function(err)
+        cmd.rm({
+          path = Path.new(path):join(entries[index].name):os_path(),
+          flags = flags,
+        }, function(err)
           if err then
-            return callback(err)
+            pcall(_next, err)
+            return
           end
           remove_next(index + 1)
         end)
@@ -219,34 +198,29 @@ function commands.rm(path, flags, callback)
       remove_next(1)
     end)
   else
-    vim.uv.fs_unlink(_path:normalize(), function(err)
-      callback(err)
-    end)
+    vim.uv.fs_unlink(path, function(err) pcall(_next, err) end)
   end
 end
 
----@param src string
----@param dst string
----@param callback function
-function commands.mv(src, dst, callback)
-  assert(src, "src is not provided")
-  assert(dst, "dst is not provided")
+function cmd.mv(opts, _next)
+  local src = Path.new(opts.src):os_path()
+  local dst = Path.new(opts.dst):os_path()
 
-  local _src = Path.new(src)
-  local _dst = Path.new(dst)
-
-  assert(_src:exists(), "source does not exist: " .. src)
-
-  commands.mkdir(_dst:parent():normalize(), { p = true }, function()
-    -- Ignore error, parent might exist
-
-    if _src:is_directory() then
-      commands.mkdir(_dst:normalize(), { p = true }, function()
-        -- Ignore error
-
-        _read_dir_iter(_src:normalize(), function(err_iter, iter)
+  cmd.mkdir({
+    path = Path.new(dst):parent():os_path(),
+    flags = { p = true },
+  }, function()
+    if Path.new(src):is_directory() then
+      cmd.mkdir({
+        path = dst,
+        flags = { p = true },
+      }, function()
+        _read_dir_iter({
+          path = src,
+        }, function(err_iter, iter)
           if err_iter then
-            return callback(err_iter)
+            pcall(_next, err_iter)
+            return
           end
 
           local entries = {}
@@ -256,63 +230,49 @@ function commands.mv(src, dst, callback)
 
           local function move_next(index)
             if index > #entries then
-              vim.uv.fs_rmdir(_src:normalize(), function(err_rmdir)
-                callback(err_rmdir)
-              end)
+              vim.uv.fs_rmdir(src, function(err_rmdir) pcall(_next, err_rmdir) end)
               return
             end
 
-            commands.mv(
-              _src:join(entries[index].name):normalize(),
-              _dst:join(entries[index].name):normalize(),
-              function(err)
-                if err then
-                  return callback(err)
-                end
+            cmd.mv({
+              src = Path.new(src):join(entries[index].name):os_path(),
+              dst = Path.new(dst):join(entries[index].name):os_path(),
+            }, function(err)
+              if err then
+                pcall(_next, err)
+              else
                 move_next(index + 1)
               end
-            )
+            end)
           end
 
           move_next(1)
         end)
       end)
     else
-      vim.uv.fs_rename(_src:normalize(), _dst:normalize(), function(err)
-        callback(err)
-      end)
+      vim.uv.fs_rename(src, dst, function(err) pcall(_next, err) end)
     end
   end)
 end
 
----@param src string
----@param dst string
----@param flags table|nil
----@param callback function
-function commands.cp(src, dst, flags, callback)
-  if type(flags) == "function" then
-    callback = flags
-    flags = nil
-  end
+function cmd.cp(opts, _next)
+  local src = Path.new(opts.src):os_path()
+  local dst = Path.new(opts.dst):os_path()
+  local flags = opts.flags or {}
 
-  assert(src, "src is not provided")
-  assert(dst, "dst is not provided")
-
-  local _src = Path.new(src)
-  local _dst = Path.new(dst)
-  flags = flags or {}
-
-  assert(_src:exists(), "source does not exist: " .. src)
-
-  if _src:is_directory() then
+  if Path.new(src):is_directory() then
     assert(flags.r, "cannot copy directory without -r flag: " .. src)
 
-    commands.mkdir(_dst:normalize(), { p = true }, function()
-      -- Ignore error
-
-      _read_dir_iter(_src:normalize(), function(err_iter, iter)
+    cmd.mkdir({
+      path = dst,
+      flags = { p = true },
+    }, function()
+      _read_dir_iter({
+        path = src,
+      }, function(err_iter, iter)
         if err_iter then
-          return callback(err_iter)
+          pcall(_next, err_iter)
+          return
         end
 
         local entries = {}
@@ -322,107 +282,102 @@ function commands.cp(src, dst, flags, callback)
 
         local function copy_next(index)
           if index > #entries then
-            return callback(nil)
+            pcall(_next)
+            return
           end
 
-          commands.cp(
-            _src:join(entries[index].name):normalize(),
-            _dst:join(entries[index].name):normalize(),
-            flags,
-            function(err)
-              if err then
-                return callback(err)
-              end
-              copy_next(index + 1)
+          cmd.cp({
+            src = Path.new(src):join(entries[index].name):os_path(),
+            dst = Path.new(dst):join(entries[index].name):os_path(),
+            flags = flags,
+          }, function(err)
+            if err then
+              pcall(_next, err)
+              return
             end
-          )
+            copy_next(index + 1)
+          end)
         end
 
         copy_next(1)
       end)
     end)
   else
-    commands.mkdir(_dst:parent():normalize(), { p = true }, function()
-      -- Ignore error
-
-      vim.uv.fs_copyfile(_src:normalize(), _dst:normalize(), function(err)
-        callback(err)
-      end)
+    cmd.mkdir({
+      path = Path.new(dst):parent():os_path(),
+      flags = { p = true },
+    }, function()
+      vim.uv.fs_copyfile(src, dst, function(err) pcall(_next, err) end)
     end)
   end
 end
 
----@param path string
----@param is_dir boolean|nil
----@param callback function
-function commands.create(path, is_dir, callback)
-  if type(is_dir) == "function" then
-    callback = is_dir
-    is_dir = nil
-  end
-
-  local _path = Path.new(path)
-
-  commands.mkdir(_path:parent():normalize(), { p = true }, function(err)
+function cmd.create(opts, _next)
+  cmd.mkdir({
+    path = Path.new(opts.path):parent():os_path(),
+    flags = { p = true },
+  }, function(err)
     if err then
-      return callback(err)
+      pcall(_next, err)
+      return
     end
 
-    if is_dir then
-      commands.mkdir(_path:normalize(), {}, callback)
+    if Path.new(opts.path):is_directory() then
+      cmd.mkdir({ path = opts.path }, _next)
     else
-      commands.touch(_path:normalize(), callback)
+      cmd.touch({ path = opts.path }, _next)
     end
   end)
 end
 
----@param path string
----@param callback function
-function commands.delete(path, callback)
-  local _path = Path.new(path)
-  commands.rm(_path:normalize(), { r = true }, function(err)
+function cmd.delete(opts, _next)
+  cmd.rm({
+    path = opts.path,
+    flags = { r = true },
+  }, function(err)
     if err then
-      return callback(err)
+      pcall(_next, err)
+      return
     end
 
-    vim.schedule(function()
-      hooks.on_delete(_path:normalize())
-    end)
+    vim.schedule(function() hooks.on_delete(opts.path) end)
 
-    callback(nil)
+    pcall(_next)
   end)
 end
 
----@param src string
----@param dst string
----@param callback function
-function commands.move(src, dst, callback)
-  local _src = Path.new(src)
-  local _dst = Path.new(dst)
-  commands.mv(_src:normalize(), _dst:normalize(), function(err)
+function cmd.move(opts, _next)
+  cmd.mv({
+    src = opts.src,
+    dst = opts.dst,
+  }, function(err)
     if err then
-      return callback(err)
+      pcall(_next, err)
+      return
     end
 
-    vim.schedule(function()
-      hooks.on_rename(_src:normalize(), _dst:normalize())
-    end)
+    vim.schedule(function() hooks.on_rename(opts.src, opts.dst) end)
 
-    callback(nil)
+    pcall(_next)
   end)
 end
 
----@param src string
----@param dst string
----@param callback function
-function commands.copy(src, dst, callback)
-  commands.cp(Path.new(src):normalize(), Path.new(dst):normalize(), { r = true }, callback)
+function cmd.copy(opts, _next)
+  cmd.cp({
+    src = Path.new(opts.src):os_path(),
+    dst = Path.new(opts.dst):os_path(),
+    flags = { r = true },
+  }, _next)
 end
 
----@param src string
----@param callback function
-function commands.trash(src, callback)
-  require("fyler.lib.trash").dump(src, callback)
+function cmd.trash(...)
+  local trash = require("fyler.lib.trash")
+  if trash then
+    trash.dump(...)
+  else
+    vim.notify_once("TRASH is supported for this platform, fallback to DELETE", vim.log.levels.WARN)
+    cmd.delete(...)
+  end
 end
 
 local function builder(fn)
@@ -432,19 +387,13 @@ local function builder(fn)
       local callback = nil
 
       -- Check if last arg is a callback
-      if type(args[#args]) == "function" then
-        callback = table.remove(args)
-      end
+      if type(args[#args]) == "function" then callback = table.remove(args) end
 
       -- Add flags if they exist and are not empty
-      if t.flags and not vim.tbl_isempty(t.flags) then
-        table.insert(args, t.flags)
-      end
+      if t.flags and not vim.tbl_isempty(t.flags) then table.insert(args, t.flags) end
 
       -- Add callback back at the end
-      if callback then
-        table.insert(args, callback)
-      end
+      if callback then table.insert(args, callback) end
 
       return fn(util.unpack(args))
     end,
@@ -461,7 +410,7 @@ end
 
 return setmetatable({}, {
   __index = function(_, k)
-    assert(commands[k], "command not implemented: " .. k)
-    return builder(commands[k])
+    assert(cmd[k], "command not implemented: " .. k)
+    return builder(cmd[k])
   end,
 })

@@ -1,6 +1,6 @@
-local Ui = require "fyler.lib.ui"
-local Win = require "fyler.lib.win"
-local util = require "fyler.lib.util"
+local Ui = require("fyler.lib.ui")
+local Win = require("fyler.lib.win")
+local util = require("fyler.lib.util")
 
 local Confirm = {}
 Confirm.__index = Confirm
@@ -31,11 +31,11 @@ function Confirm:open(options, message, onsubmit)
     mappings   = {
       [{ 'y', 'o', '<Enter>' }] = function()
         self.window:hide()
-        onsubmit(true)
+        pcall(onsubmit, true)
       end,
       [{ 'n', 'c', '<ESC>' }] = function()
         self.window:hide()
-        onsubmit(false)
+        pcall(onsubmit, false)
       end
     },
     autocmds   = {

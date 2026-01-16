@@ -3,9 +3,10 @@ local M = {}
 local augroup = vim.api.nvim_create_augroup("fyler_augroup_global", { clear = true })
 
 function M.setup(config)
-  local fyler = require "fyler"
-  local helper = require "fyler.views.finder.helper"
-  local util = require "fyler.lib.util"
+  local fyler = require("fyler")
+  local helper = require("fyler.views.finder.helper")
+  local util = require("fyler.lib.util")
+  local Path = require("fyler.lib.path")
 
   config = config or {}
 
@@ -15,8 +16,8 @@ function M.setup(config)
     vim.g.loaded_netrwPlugin = 1
 
     -- Clear NETRW auto commands if NETRW loaded before disable
-    vim.cmd "silent! autocmd! FileExplorer *"
-    vim.cmd "autocmd VimEnter * ++once silent! autocmd! FileExplorer *"
+    vim.cmd("silent! autocmd! FileExplorer *")
+    vim.cmd("autocmd VimEnter * ++once silent! autocmd! FileExplorer *")
 
     vim.api.nvim_create_autocmd("BufEnter", {
       group = augroup,
@@ -24,15 +25,13 @@ function M.setup(config)
       desc = "Hijack directory buffers for fyler",
       callback = function(args)
         local bufname = vim.api.nvim_buf_get_name(args.buf)
-        if vim.fn.isdirectory(bufname) == 1 or helper.is_protocol_uri(bufname) then
+        if Path.new(bufname):is_directory() or helper.is_protocol_uri(bufname) then
           vim.schedule(function()
-            if util.get_buf_option(args.buf, "filetype") == "fyler" then
-              return
-            end
-            if vim.api.nvim_buf_is_valid(args.buf) then
-              vim.api.nvim_buf_delete(args.buf, { force = true })
-            end
-            fyler.open { dir = helper.normalize_uri(bufname) }
+            if util.get_buf_option(args.buf, "filetype") == "fyler" then return end
+
+            if vim.api.nvim_buf_is_valid(args.buf) then vim.api.nvim_buf_delete(args.buf, { force = true }) end
+
+            fyler.open({ dir = helper.normalize_uri(bufname) })
           end)
         end
       end,
@@ -40,17 +39,13 @@ function M.setup(config)
 
     vim.api.nvim_create_autocmd({ "BufReadCmd", "SessionLoadPost" }, {
       group = augroup,
-      pattern = "fyler://*",
+      pattern = "fyler://%d+//*",
       desc = "Open fyler protocol URIs",
       callback = function(args)
         local bufname = vim.api.nvim_buf_get_name(args.buf)
         if helper.is_protocol_uri(bufname) then
           local finder_instance = require("fyler.views.finder").instance(bufname)
-          if not finder_instance:isopen() then
-            vim.schedule(function()
-              fyler.open { dir = bufname }
-            end)
-          end
+          if not finder_instance:isopen() then vim.schedule_wrap(fyler.open)({ dir = bufname }) end
         end
       end,
     })
@@ -59,20 +54,19 @@ function M.setup(config)
   vim.api.nvim_create_autocmd("ColorScheme", {
     group = augroup,
     desc = "Adjust highlight groups with respect to colorscheme",
-    callback = function()
-      require("fyler.lib.hl").setup()
-    end,
+    callback = function() require("fyler.lib.hl").setup() end,
   })
 
   if config.values.views.finder.follow_current_file then
     vim.api.nvim_create_autocmd("BufEnter", {
       group = augroup,
+      pattern = "*",
       desc = "Track current focused buffer in finder",
-      callback = function(args)
+      callback = function(arg)
+        if helper.is_protocol_uri(arg.file) or arg.file == "" then return end
+
         vim.schedule(function()
-          if not (helper.is_protocol_uri(args.file) or util.get_buf_option(args.buf, "filetype") == "fyler") then
-            fyler.navigate(args.file)
-          end
+          if not util.get_buf_option(arg.buf, "filetype") == "fyler" then fyler.navigate(arg.file) end
         end)
       end,
     })
