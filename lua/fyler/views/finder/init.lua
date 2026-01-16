@@ -203,7 +203,10 @@ end
 
 local function run_mutation(operations)
   local async_handler = async.wrap(function(operation, _next)
+    if config.values.views.finder.delete_to_trash and operation.type == "delete" then operation.type = "trash" end
+
     assert(require("fyler.lib.fs")[operation.type], "Unknown operation")(operation, _next)
+
     return operation.path or operation.dst
   end)
 
@@ -229,19 +232,13 @@ local function run_mutation(operations)
   return last_focusable_operation
 end
 
-local CONFIRMATION_THRESHOLDS = { create = 5, delete = 0, move = 1, copy = 1 }
-
 ---@return boolean
 local function can_skip_confirmation(operations)
   local count = { create = 0, delete = 0, move = 0, copy = 0 }
+
   util.tbl_each(operations, function(o) count[o.type] = (count[o.type] or 0) + 1 end)
 
-  -- stylua: ignore start
-  return count.copy   <= CONFIRMATION_THRESHOLDS.copy
-     and count.create <= CONFIRMATION_THRESHOLDS.create
-     and count.delete <= CONFIRMATION_THRESHOLDS.delete
-     and count.move   <= CONFIRMATION_THRESHOLDS.move
-  -- stylua: ignore end
+  return count.create <= 5 and count.move <= 1 and count.copy <= 1 and count.delete <= 0
 end
 
 local get_confirmation = async.wrap(vim.schedule_wrap(function(...) require("fyler.input").confirm.open(...) end))
@@ -264,6 +261,7 @@ end
 function Finder:dispatch_mutation()
   async.void(function()
     local operations = self.files:diff_with_buffer()
+
     if vim.tbl_isempty(operations) then return self:dispatch_refresh() end
 
     if should_mutate(operations, require("fyler.lib.path").new(self:getcwd())) then

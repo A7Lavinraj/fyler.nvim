@@ -35,7 +35,7 @@ function Path:segments()
 end
 
 ---@return Path
-function Path:parent() return Path.new(vim.fn.fnamemodify(self:posix_path(), ":h")) end
+function Path:parent() return Path.new(vim.fn.fnamemodify(vim.fs.normalize(self:posix_path()), ":h")) end
 
 ---@return string
 function Path:basename()

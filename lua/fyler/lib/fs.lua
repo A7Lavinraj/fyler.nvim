@@ -106,29 +106,27 @@ function cmd.touch(opts, _next)
 end
 
 function cmd.mkdir(opts, _next)
-  local path = Path.new(opts.path):os_path()
   local flags = opts.flags or {}
 
   if flags.p then
     local prefixes = {}
-    for _, prefix in Path.new(path):iter() do
+    for _, prefix in Path.new(opts.path):iter() do
       table.insert(prefixes, prefix)
     end
 
     local function create_next(index)
-      if index > #prefixes then
-        pcall(_next)
-        return
-      end
+      if index > #prefixes then return pcall(_next) end
 
-      cmd.mkdir({
-        path = prefixes[index],
-      }, function() create_next(index + 1) end)
+      if Path.new(prefixes[index]):exists() then
+        create_next(index + 1)
+      else
+        cmd.mkdir({ path = prefixes[index] }, function() create_next(index + 1) end)
+      end
     end
 
     create_next(1)
   else
-    vim.uv.fs_mkdir(path, 493, function(err) pcall(_next, err) end)
+    vim.uv.fs_mkdir(Path.new(opts.path):os_path(), 493, function(err) pcall(_next, err) end)
   end
 end
 
@@ -218,7 +216,7 @@ function cmd.mv(opts, _next)
         flags = { p = true },
       }, function()
         _read_dir_iter({
-          path = dst,
+          path = src,
         }, function(err_iter, iter)
           if err_iter then
             pcall(_next, err_iter)
@@ -372,7 +370,15 @@ function cmd.copy(opts, _next)
   }, _next)
 end
 
-function cmd.trash(opts, _next) require("fyler.lib.trash").dump(opts.src, _next) end
+function cmd.trash(...)
+  local trash = require("fyler.lib.trash")
+  if trash then
+    trash.dump(...)
+  else
+    vim.notify_once("TRASH is supported for this platform, fallback to DELETE", vim.log.levels.WARN)
+    cmd.delete(...)
+  end
+end
 
 local function builder(fn)
   local meta = {

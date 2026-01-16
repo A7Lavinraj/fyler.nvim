@@ -9,31 +9,6 @@ M.match_pattern = MiniTest.new_expectation(
   function(str, pattern) return string.format("Pattern: %s\nObserved string: %s", vim.inspect(pattern), str) end
 )
 
-function M.make_mock_dir()
-  local temp_dir = vim.fs.joinpath(_G.FYLER_TEMP_DIR, "data")
-  MiniTest.finally(function() vim.fn.delete(temp_dir, "rf") end)
-
-  for _, path in ipairs({
-    "A-file-1",
-    "a-file",
-    "b-file",
-    "a-dir/aa-dir/aaa-file",
-    "b-dir/ba-file",
-  }) do
-    local path_ext = vim.fs.joinpath(temp_dir, path)
-
-    vim.fn.mkdir(vim.fn.fnamemodify(path_ext, ":h"), "p")
-
-    if vim.endswith(path_ext, "/") then
-      vim.fn.mkdir(path_ext)
-    else
-      vim.fn.writefile({}, path_ext)
-    end
-  end
-
-  return temp_dir
-end
-
 M.new_set = MiniTest.new_set
 
 function M.new_neovim()
@@ -79,31 +54,6 @@ function M.new_neovim()
     local screenshot_opts = { redraw = opts.redraw }
     opts.redraw = nil
     MiniTest.expect.reference_screenshot(nvim.get_screenshot(screenshot_opts), path, opts)
-  end
-
-  nvim.validate_tree = function(dir, ref_tree)
-    nvim.lua("_G.dir = " .. vim.inspect(dir))
-    local tree = nvim.lua([[
-    local read_dir
-    read_dir = function(path, res)
-      res = res or {}
-      local fs = vim.loop.fs_scandir(path)
-      local name, fs_type = vim.loop.fs_scandir_next(fs)
-      while name do
-        local cur_path = path .. '/' .. name
-        table.insert(res, cur_path .. (fs_type == 'directory' and '/' or ''))
-        if fs_type == 'directory' then read_dir(cur_path, res) end
-        name, fs_type = vim.loop.fs_scandir_next(fs)
-      end
-      return res
-    end
-    local dir_len = _G.dir:len()
-    return vim.tbl_map(function(p) return p:sub(dir_len + 2) end, read_dir(_G.dir))
-  ]])
-    table.sort(tree)
-    local ref = vim.deepcopy(ref_tree)
-    table.sort(ref)
-    M.equal(tree, ref)
   end
 
   nvim.dbg_screen = function()

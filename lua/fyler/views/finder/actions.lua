@@ -25,7 +25,7 @@ local function _select(self, opener, opts)
   local entry = self.files:node_entry(ref_id)
   if not entry then return end
 
-  if entry:is_directory() then
+  if entry.type == "directory" then
     if entry.open then
       self.files:collapse_node(ref_id)
     else
@@ -148,7 +148,7 @@ function M.n_goto_node(self)
     local entry = self.files:node_entry(ref_id)
     if not entry then return end
 
-    if entry:is_directory() then
+    if entry.type == "directory" then
       self:change_root(entry.path):dispatch_refresh({ force_update = true })
     else
       self:action_call("n_select")
@@ -167,13 +167,13 @@ function M.n_collapse_node(self)
 
     -- should not collapse root, so get it's id
     local root_ref_id = self.files.trie.value
-    if entry:is_directory() and ref_id == root_ref_id then return end
+    if entry.type == "directory" and ref_id == root_ref_id then return end
 
     local collapse_target = self.files:find_parent(ref_id)
     if (not collapse_target) or (not entry.open) and collapse_target == root_ref_id then return end
 
     local focus_ref_id
-    if entry:is_directory() and entry.open then
+    if entry.type == "directory" and entry.open then
       self.files:collapse_node(ref_id)
       focus_ref_id = ref_id
     else

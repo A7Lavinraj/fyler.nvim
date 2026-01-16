@@ -1,12 +1,11 @@
-local Manager = require("fyler.views.finder.files.manager")
 local Path = require("fyler.lib.path")
 local Trie = require("fyler.lib.structs.trie")
 local fs = require("fyler.lib.fs")
+local manager = require("fyler.views.finder.files.manager")
 local util = require("fyler.lib.util")
 
 ---@class Files
 ---@field trie Trie
----@field manager EntryManager
 ---@field root_path string
 ---@field finder Finder
 local Files = {}
@@ -17,19 +16,19 @@ Files.__index = Files
 function Files.new(opts)
   assert(Path.new(opts.path):is_directory(), "Files root must be a directory")
 
-  local instance = {}
-  instance.manager = Manager.new()
-  instance.trie = Trie.new(instance.manager:set({
-    name = opts.name,
-    open = opts.open,
-    path = opts.path,
-    type = "directory",
-  }))
+  local instance = {
+    root_path = opts.path,
+    finder = opts.finder,
+    trie = Trie.new(manager.set({
+      name = opts.name,
+      open = opts.open,
+      path = opts.path,
+      type = "directory",
+      updated = false,
+    })),
+  }
 
-  instance.root_path = opts.path
-  instance.finder = opts.finder
-
-  local root_entry = instance.manager:get(instance.trie.value)
+  local root_entry = manager.get(instance.trie.value)
   if root_entry.open then instance.finder.watcher:start(root_entry.path) end
 
   setmetatable(instance, Files)
@@ -50,13 +49,13 @@ function Files:path_to_segments(path)
 end
 
 ---@param ref_id integer
----@return Entry
-function Files:node_entry(ref_id) return self.manager:get(assert(ref_id, "cannot find node without ref_id")) end
+---@return FilesEntry
+function Files:node_entry(ref_id) return manager.get(assert(ref_id, "cannot find node without ref_id")) end
 
 ---@param ref_id integer
 ---@return Trie|nil
 function Files:find_node_by_ref_id(ref_id)
-  local entry = self.manager:get(ref_id)
+  local entry = manager.get(ref_id)
   local segments = self:path_to_segments(entry.path)
   if not segments then return nil end
   return self.trie:find(segments)
@@ -64,10 +63,10 @@ end
 
 ---@param ref_id integer
 function Files:expand_node(ref_id)
-  local entry = self.manager:get(ref_id)
+  local entry = manager.get(ref_id)
   assert(entry, "cannot locate entry with given ref_id")
 
-  if not entry:is_directory() then return self end
+  if entry.type ~= "directory" then return self end
 
   entry.open = true
   self.finder.watcher:start(entry.path)
@@ -77,10 +76,10 @@ end
 
 ---@param ref_id integer
 function Files:collapse_node(ref_id)
-  local entry = self.manager:get(ref_id)
+  local entry = manager.get(ref_id)
   assert(entry, "cannot locate entry with given ref_id")
 
-  if not entry:is_directory() then return self end
+  if entry.type ~= "directory" then return self end
 
   entry.open = false
   self.finder.watcher:stop(entry.path)
@@ -91,7 +90,7 @@ end
 ---@param ref_id integer
 ---@return integer|nil
 function Files:find_parent(ref_id)
-  local entry = self.manager:get(ref_id)
+  local entry = manager.get(ref_id)
   local segments = self:path_to_segments(entry.path)
 
   if not segments or #segments == 0 then return nil end
@@ -115,8 +114,9 @@ end
 
 ---@param node Trie
 function Files:_collapse_recursive(node)
-  local entry = self.manager:get(node.value)
-  if entry:is_directory() and entry.open then
+  local entry = manager.get(node.value)
+
+  if entry.type == "directory" and entry.open then
     entry.open = false
     self.finder.watcher:stop(entry.path)
   end
@@ -127,13 +127,13 @@ function Files:_collapse_recursive(node)
 end
 
 ---@param parent_ref_id integer
----@param opts EntryOpts
+---@param opts FilesEntryOpts
 function Files:add_child(parent_ref_id, opts)
-  local parent_entry = self.manager:get(parent_ref_id)
+  local parent_entry = manager.get(parent_ref_id)
 
   opts.path = Path.new(parent_entry.path):join(opts.name):posix_path()
 
-  local child_ref_id = self.manager:set(opts)
+  local child_ref_id = manager.set(opts)
 
   local parent_segments = self:path_to_segments(parent_entry.path)
   local parent_node = self.trie:find(parent_segments or {})
@@ -170,7 +170,7 @@ end
 ---@param node Trie
 ---@param onupdate function
 function Files:_update(node, onupdate)
-  local node_entry = self.manager:get(node.value)
+  local node_entry = manager.get(node.value)
   if not node_entry.open then return onupdate(nil) end
 
   fs.ls({
@@ -185,20 +185,20 @@ function Files:_update(node, onupdate)
 
     for name, child_node in pairs(node.children) do
       if not entry_paths[name] then
-        local child_entry = self.manager:get(child_node.value)
-        if child_entry:is_directory() then self.finder.watcher:stop(child_entry.path) end
+        local child_entry = manager.get(child_node.value)
+        if child_entry.type == "directory" then self.finder.watcher:stop(child_entry.path) end
         node.children[name] = nil
       end
     end
 
     for name, entry in pairs(entry_paths) do
       if not node.children[name] then
-        local child_ref_id = self.manager:set(entry)
+        local child_ref_id = manager.set(entry)
         local child_node = Trie.new(child_ref_id)
         node.children[name] = child_node
 
-        local child_entry = self.manager:get(child_ref_id)
-        if child_entry:is_directory() and child_entry.open then self.finder.watcher:start(child_entry.path) end
+        local child_entry = manager.get(child_ref_id)
+        if child_entry.type == "directory" and child_entry.open then self.finder.watcher:start(child_entry.path) end
       end
     end
 
@@ -236,9 +236,9 @@ function Files:navigate(path, onnavigate)
     if index > #segments then return onnavigate(nil, current_node.value, did_update) end
 
     local segment = segments[index]
-    local current_entry = self.manager:get(current_node.value)
+    local current_entry = manager.get(current_node.value)
 
-    if current_entry:is_directory() then
+    if current_entry.type == "directory" then
       local needs_update = not current_entry.open or not current_entry.updated
 
       if needs_update then
@@ -271,8 +271,7 @@ function Files:totable() return self:_totable(self.trie) end
 ---@param node Trie
 ---@return table
 function Files:_totable(node)
-  local entry = self.manager:get(node.value)
-
+  local entry = manager.get(node.value)
   local table_node = {
     link = entry.link,
     name = entry.name,
@@ -287,12 +286,8 @@ function Files:_totable(node)
 
   local child_list = {}
   for name, child in pairs(node.children) do
-    local child_entry = self.manager:get(child.value)
-    table.insert(child_list, {
-      name = name,
-      node = child,
-      is_dir = child_entry:is_directory(),
-    })
+    local child_entry = manager.get(child.value)
+    table.insert(child_list, { name = name, node = child, is_dir = child_entry.type == "directory" })
   end
 
   for _, item in ipairs(child_list) do
