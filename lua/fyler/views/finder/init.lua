@@ -127,7 +127,7 @@ end
 function Finder:getrwd() return util.select_n(2, helper.parse_protocol_uri(self.uri)) end
 
 ---@return string
-function Finder:getcwd() return Path.new(assert(self.files, "files is require").root_path):os_path() end
+function Finder:getcwd() return Path.new(assert(self.files, "files is required").root_path):os_path() end
 
 function Finder:cursor_node_entry()
   local entry
@@ -152,10 +152,10 @@ function Finder:change_root(path)
 
   self.watcher:disable(true)
   self.files = require("fyler.views.finder.files").new({
-    path = path,
     open = true,
+    name = Path.new(path):basename(),
+    path = Path.new(path):posix_path(),
     finder = self,
-    name = vim.fn.fnamemodify(path, ":t"),
   })
 
   if self.win then self.win:update_title(string.format(" %s ", path)) end
@@ -287,8 +287,8 @@ function M.instance(uri)
   finder.watcher = require("fyler.views.finder.watcher").new(finder)
   finder.files = require("fyler.views.finder.files").new({
     open = true,
-    path = path,
-    name = Path.new(path):parent():posix_path(),
+    name = Path.new(path):basename(),
+    path = Path.new(path):posix_path(),
     finder = finder,
   })
 

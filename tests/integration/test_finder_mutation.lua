@@ -76,7 +76,8 @@ T["Each WinKind Can"]["Handle Empty Actions"] = function(kind)
   nvim.set_lines(0, -1, -1, false, { "" })
   nvim.expect_screenshot()
   nvim.cmd("write")
-  check_tree(path, {})
+  vim.uv.sleep(50)
+  nvim.expect_screenshot()
 end
 
 T["Each WinKind Can"]["Do Create Actions"] = function(kind)
