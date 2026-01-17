@@ -255,7 +255,14 @@ M.operations = Component.new(function(operations)
       error(string.format("Unknown operation type '%s'", operation.type))
     end
   end
-  return { tag = "operations", children = { Row({ Column(types), Text(" "), Column(details) }) } }
+  return {
+    tag = "operations",
+    children = {
+      Text(""),
+      Row({ Text("  "), Column(types), Text(" "), Column(details), Text("  ") }),
+      Text(""),
+    },
+  }
 end)
 
 return M

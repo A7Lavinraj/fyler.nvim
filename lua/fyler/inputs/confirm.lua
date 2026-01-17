@@ -6,7 +6,7 @@ local Confirm = {}
 Confirm.__index = Confirm
 
 local function resolve_dim(width, height)
-  width = math.max(25, math.min(vim.o.columns, width))
+  width = math.max(25, math.min(vim.o.columns, width)) + 2
   height = math.max(1, math.min(16, height))
   local left = math.floor((vim.o.columns - width) * 0.5)
   local top = math.floor((vim.o.lines - height) * 0.5)
