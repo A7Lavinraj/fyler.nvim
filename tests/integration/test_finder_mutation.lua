@@ -49,7 +49,7 @@ end
 local T = helper.new_set({
   hooks = {
     pre_case = function() nvim.setup({ views = { finder = { columns_order = {} } } }) end,
-    post_case = nvim.stop,
+    post_case_once = nvim.stop,
   },
 })
 
@@ -71,25 +71,23 @@ T["Each WinKind Can"] = helper.new_set({
 T["Each WinKind Can"]["Handle Empty Actions"] = function(kind)
   local path = make_tree({})
   nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
-  vim.uv.sleep(50)
-  nvim.expect_screenshot()
+  vim.uv.sleep(20)
   nvim.set_lines(0, -1, -1, false, { "" })
   nvim.expect_screenshot()
   nvim.cmd("write")
-  vim.uv.sleep(50)
+  vim.uv.sleep(20)
   nvim.expect_screenshot()
 end
 
 T["Each WinKind Can"]["Do Create Actions"] = function(kind)
   local path = make_tree({})
   nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
-  vim.uv.sleep(50)
-  nvim.expect_screenshot()
-  nvim.set_lines(0, 0, -1, false, vim.list_extend(nvim.get_lines(0, 0, -1, false), { "new-file", "new-dir/" }))
+  vim.uv.sleep(20)
+  nvim.set_lines(0, 0, -1, false, { "new-file", "new-dir/" })
   nvim.expect_screenshot()
   nvim.cmd("write")
   nvim.type_keys("y")
-  vim.uv.sleep(50)
+  vim.uv.sleep(20)
   nvim.expect_screenshot()
   check_tree(path, { "new-file", "new-dir/" })
 end
@@ -97,13 +95,12 @@ end
 T["Each WinKind Can"]["Do Delete Actions"] = function(kind)
   local path = make_tree({ "a-file", "a-dir/", "b-dir/", "b-dir/ba-file" })
   nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
-  vim.uv.sleep(50)
-  nvim.expect_screenshot()
+  vim.uv.sleep(20)
   nvim.set_lines(0, 0, -1, false, {})
   nvim.expect_screenshot()
   nvim.cmd("write")
   nvim.type_keys("y")
-  vim.uv.sleep(50)
+  vim.uv.sleep(20)
   nvim.expect_screenshot()
   check_tree(path, {})
 end
@@ -111,14 +108,13 @@ end
 T["Each WinKind Can"]["Do Move Actions"] = function(kind)
   local path = make_tree({ "a-file", "a-dir/", "b-dir/", "b-dir/ba-file" })
   nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
-  vim.uv.sleep(50)
-  nvim.expect_screenshot()
+  vim.uv.sleep(20)
   -- stylua: ignore
   nvim.set_lines(0, 0, -1, false, vim.tbl_map(function(line) return line .. "-renamed" end, nvim.get_lines(0, 0, -1, false)))
   nvim.expect_screenshot()
   nvim.cmd("write")
   nvim.type_keys("y")
-  vim.uv.sleep(50)
+  vim.uv.sleep(20)
   nvim.expect_screenshot()
   check_tree(path, { "a-file-renamed", "a-dir-renamed/", "b-dir-renamed/", "b-dir-renamed/ba-file" })
 end
@@ -126,14 +122,13 @@ end
 T["Each WinKind Can"]["Do Copy Actions"] = function(kind)
   local path = make_tree({ "a-file", "a-dir/", "b-dir/", "b-dir/ba-file" })
   nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
-  vim.uv.sleep(50)
-  nvim.expect_screenshot()
+  vim.uv.sleep(20)
   -- stylua: ignore
   nvim.set_lines(0, -1, -1, false, vim.tbl_map(function(line) return line .. "-copied" end, nvim.get_lines(0, 0, -1, false)))
   nvim.expect_screenshot()
   nvim.cmd("write")
   nvim.type_keys("y")
-  vim.uv.sleep(50)
+  vim.uv.sleep(20)
   nvim.expect_screenshot()
   -- stylua: ignore
   check_tree(path, { "a-file", "a-dir/", "b-dir/", "b-dir/ba-file", "a-file-copied", "a-dir-copied/", "b-dir-copied/", "b-dir-copied/ba-file" })

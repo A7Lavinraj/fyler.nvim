@@ -7,7 +7,7 @@ local nvim = helper.new_neovim()
 local T = helper.new_set({
   hooks = {
     pre_case = nvim.setup,
-    post_case = nvim.stop,
+    post_case_once = nvim.stop,
   },
 })
 
