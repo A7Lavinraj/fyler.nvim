@@ -1,114 +1,68 @@
                                                                     *fyler.nvim*
 INTRODUCTION
 
-Fyler.nvim is a neovim file manager plugin based on buffer based file editing.
+Fyler.nvim is a Neovim file manager plugin based on buffer-based file editing.
 
-Why Fyler.nvim over |oil.nvim|?
-- It provides tree view.
-- Users can now have full overview of project without going back and
-  forth between directories.
+Why choose Fyler.nvim over |oil.nvim|?
+- Provides a tree view.
+- Users can have a full overview of their project without going back and forth
+  between directories.
 
-Getting started with Fyler:
-1. Run `:checkhealth fyler` to make sure everything is in right place.
-2. Fyler must be setup correctly before used. See |Fyler.Setup|
+GETTING STARTED
+
+1. Fyler must be setup correctly before use.
 
 USAGE
 
-Fyler can be used through commands:
+Fyler can be used through commands or the Lua API.
 
-`:Fyler dir=... kind=...
+COMMANDS
 
-Here `dir` is just a path and `kind` could be anything from following:
+:Fyler dir=... kind=...
 
-- `float`
-- `replace`
-- `split_above`
-- `split_above_all`
-- `split_below`
-- `split_below_all`
-- `split_left`
-- `split_left_most`
-- `split_right`
-- `split_right_most`
+Parameters:
+dir    Path to the directory to open
+kind   Display method, one of:
+       - `float`
+       - `replace`
+       - `split_above`
+       - `split_above_all`
+       - `split_below`
+       - `split_below_all`
+       - `split_left`
+       - `split_left_most`
+       - `split_right`
+       - `split_right_most`
 
-Fyler can be used through lua API:
+LUA API
+
 >lua
-  local fyler = require("fyler")
+    local fyler = require("fyler")
 
-  -- Opens finder view with given options
-  fyler.open({ dir = "...", kind = "..." })
+    -- Opens finder view with given options
+    fyler.open({ dir = "...", kind = "..." })
 
-  -- Toggles finder view with given options
-  fyler.toggle({ dir = "...", kind = "..." })
+    -- Toggles finder view with given options
+    fyler.toggle({ dir = "...", kind = "..." })
 
-  -- Focuses finder view
-  fyler.focus()
+    -- Focuses finder view
+    fyler.focus()
 
-  -- Focuses given file path or alternate buffer
-  fyler.navigate("...")
+    -- Focuses given file path or alternate buffer
+    fyler.navigate("...")
 <
 
 ------------------------------------------------------------------------------
-                                                                   *fyler.setup*
+                                                                  *fyler.config*
 CONFIGURATION
 
 To setup Fyler put following code anywhere in your neovim runtime:
+
 >lua
   require("fyler").setup()
 <
 
-------------------------------------------------------------------------------
-INTEGRATIONS                                             *fyler.integrations*
-
-icon                                                *fyler.integrations.icon*
-
-Icon provider for file and directory icons.
-
->lua
-  integrations = {
-    icon = "mini_icons",  -- default
-  }
-<
-
-Providers:
-- "mini_icons": Uses nvim-mini/mini.icons (default)
-- "nvim_web_devicons": Uses nvim-tree/nvim-web-devicons
-- "vim_nerdfont": Uses lambdalisue/vim-nerdfont
-- "none": Disables icons
-
-winpick                                          *fyler.integrations.winpick*
-
-Window picker for selecting which window to open files in (split kinds).
-
->lua
-  integrations = {
-    winpick = "none",  -- or { provider = "none", opts = {} }
-  }
-<
-
-Providers:
-- "none": Always opens in the last used window (default)
-- "builtin": Floating labels on windows. Options: `chars` (default: "asdfghjkl;")
-- "nvim-window-picker": Uses s1n7ax/nvim-window-picker. Options passed to `pick_window()`.
-- "snacks": Uses folke/snacks.nvim picker. Options passed to `snacks.picker.util.pick_win()`.
-- Custom function: `function(win_filter, onsubmit, opts)`
-  - `win_filter`: list of window IDs to exclude from selection (e.g. the fyler window)
-  - `onsubmit`: callback function, call with selected window ID or nil to cancel
-  - `opts`: the `opts` table from the winpick config
-
-Custom winpick function example:
->lua
-  integrations = {
-    winpick = function(win_filter, onsubmit, opts)
-      local winid = require("window-picker").pick_window()
-      onsubmit(winid)
-    end,
-    opts = {}, -- this is what is passed as opts to the above function
-  }
-<
-------------------------------------------------------------------------------
-                                                                *fyler.defaults*
-DEFAULTS
+CONFIGURATION.DEFAULTS
 
 To know more about plugin customization. visit:
 `https://github.com/A7Lavinraj/fyler.nvim/wiki/configuration`
@@ -116,18 +70,30 @@ To know more about plugin customization. visit:
 >lua
   function config.defaults()
     return {
+      -- Hooks are functions automatically called for corresponding events:
+      -- hooks.on_delete:    function(path: string)
+      -- hooks.on_rename:    function(src: string, dst: string)
+      -- hooks.on_highlight: function(src: string, dst: string)
       hooks = {},
+      -- Integration is a way to hijack generic plugin calls.
       integrations = {
         icon = "mini_icons",
         winpick = "none",
       },
+      -- View is a plugin component with dedicated window, UI and config
       views = {
         finder = {
+          -- Automatically closes after open a file
           close_on_select = true,
+          -- Skip confirmation for simple operations
           confirm_simple = false,
+          -- Disables NETRW and take over
           default_explorer = false,
+          -- Move to trash instead of permanent delete - MACOS not supported
           delete_to_trash = false,
+          -- Define order of information columns
           columns_order = { "git", "diagnostic" },
+          -- Define configuration fo each available information column
           columns = {
             git = {
               enabled = true,
@@ -152,11 +118,13 @@ To know more about plugin customization. visit:
               },
             },
           },
+          -- Overrides directory icons for vairous state
           icon = {
             directory_collapsed = nil,
             directory_empty = nil,
             directory_expanded = nil,
           },
+          -- Defines indentation guides config
           indentscope = {
             enabled = true,
             markers = {
@@ -164,6 +132,7 @@ To know more about plugin customization. visit:
               { "└", "FylerIndentMarker" },
             },
           },
+          -- Defines key mapping
           mappings = {
             ["q"] = "CloseView",
             ["<CR>"] = "Select",
@@ -176,12 +145,15 @@ To know more about plugin customization. visit:
             ["#"] = "CollapseAll",
             ["<BS>"] = "CollapseNode",
           },
+          -- Defines key mapping options
           mappings_opts = {
             nowait = false,
             noremap = true,
             silent = true,
           },
+          -- Automatically focus file in the finder UI
           follow_current_file = true,
+          -- Automatically updated finder on file system events
           watcher = {
             enabled = false,
           },
@@ -260,4 +232,47 @@ To know more about plugin customization. visit:
   end
 
 <
+------------------------------------------------------------------------------
+                                                                   *fyler.setup*
+INTEGRATIONS.ICON
+
+Icon provider for file and directory icons.
+
+>lua
+  integrations = {
+    icon = "mini_icons",        -- nvim-mini/mini.icons (default)
+    icon = "nvim_web_devicons", -- nvim-tree/nvim-web-devicons
+    icon = "vim_nerdfont",      -- lambdalisue/vim-nerdfont
+    icon = "none",              -- disable icons
+  }
+<
+
+INTEGRATIONS.WINPICK
+
+Window picker for selecting which window to open files in (split kinds).
+
+>lua
+  integrations = {
+    -- Use winpick = "<provider>" or { provider = "<provider>", opts = {} }
+    winpick = "none",
+    winpick = "snacks",
+    winpick = "builtin",
+    winpick = "nvim-window-picker",
+    winpick = function(win_filter, on_submit, opts)
+      -- custom logic...
+    end)
+  }
+<
+
+Custom winpick function example:
+
+>lua
+  integrations = {
+    winpick = function(win_filter, on_submit, opts)
+      on_submit(require("window-picker").pick_window())
+    end,
+    opts = {}, -- this is what is passed as opts to the above function
+  }
+<
+
  vim:tw=78:ts=8:noet:ft=help:norl:

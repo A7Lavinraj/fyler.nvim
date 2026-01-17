@@ -1,50 +1,54 @@
 --- INTRODUCTION
 ---
---- Fyler.nvim is a neovim file manager plugin based on buffer based file editing.
+--- Fyler.nvim is a Neovim file manager plugin based on buffer-based file editing.
 ---
---- Why Fyler.nvim over |oil.nvim|?
---- - It provides tree view.
---- - Users can now have full overview of project without going back and
----   forth between directories.
+--- Why choose Fyler.nvim over |oil.nvim|?
+--- - Provides a tree view.
+--- - Users can have a full overview of their project without going back and forth
+---   between directories.
 ---
---- Getting started with Fyler:
---- 1. Run `:checkhealth fyler` to make sure everything is in right place.
---- 2. Fyler must be setup correctly before used. See |Fyler.Setup|
+--- GETTING STARTED
+---
+--- 1. Fyler must be setup correctly before use.
 ---
 --- USAGE
 ---
---- Fyler can be used through commands:
+--- Fyler can be used through commands or the Lua API.
 ---
---- `:Fyler dir=... kind=...
+--- COMMANDS
 ---
---- Here `dir` is just a path and `kind` could be anything from following:
+--- :Fyler dir=... kind=...
 ---
---- - `float`
---- - `replace`
---- - `split_above`
---- - `split_above_all`
---- - `split_below`
---- - `split_below_all`
---- - `split_left`
---- - `split_left_most`
---- - `split_right`
---- - `split_right_most`
+--- Parameters:
+--- dir    Path to the directory to open
+--- kind   Display method, one of:
+---        - `float`
+---        - `replace`
+---        - `split_above`
+---        - `split_above_all`
+---        - `split_below`
+---        - `split_below_all`
+---        - `split_left`
+---        - `split_left_most`
+---        - `split_right`
+---        - `split_right_most`
 ---
---- Fyler can be used through lua API:
+--- LUA API
+---
 --- >lua
----   local fyler = require("fyler")
+---     local fyler = require("fyler")
 ---
----   -- Opens finder view with given options
----   fyler.open({ dir = "...", kind = "..." })
+---     -- Opens finder view with given options
+---     fyler.open({ dir = "...", kind = "..." })
 ---
----   -- Toggles finder view with given options
----   fyler.toggle({ dir = "...", kind = "..." })
+---     -- Toggles finder view with given options
+---     fyler.toggle({ dir = "...", kind = "..." })
 ---
----   -- Focuses finder view
----   fyler.focus()
+---     -- Focuses finder view
+---     fyler.focus()
 ---
----   -- Focuses given file path or alternate buffer
----   fyler.navigate("...")
+---     -- Focuses given file path or alternate buffer
+---     fyler.navigate("...")
 --- <
 ---
 ---@tag fyler.nvim
