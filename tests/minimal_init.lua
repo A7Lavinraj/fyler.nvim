@@ -16,6 +16,7 @@ for o, v in pairs({
   readonly    = true,
   statusline  = " ",
   swapfile    = false,
+  tabline     = " ",
   writebackup = false,
 }) do vim.opt[o] = v end
 

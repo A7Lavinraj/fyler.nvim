@@ -125,8 +125,8 @@ end
 ---@param self Finder
 function M.n_goto_parent(self)
   return function()
-    local parent_dir = vim.fn.fnamemodify(self:getcwd(), ":h")
-    if parent_dir == self:getrwd() then return end
+    local parent_dir = Path.new(self:getcwd()):parent():posix_path()
+    if parent_dir == self:getcwd() then return end
     self:change_root(parent_dir):dispatch_refresh({ force_update = true })
   end
 end
