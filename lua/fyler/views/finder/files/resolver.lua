@@ -26,12 +26,9 @@ function Resolver:parsing()
 
     local parent = parents:top()
     local node = {}
-    if ref_id then
-      node.ref_id = ref_id
-      node.path = Path.new(manager.get(ref_id).path):parent():join(name):posix_path()
-    else
-      node.path = Path.new(parent.node.path):join(name):posix_path()
-    end
+
+    node.ref_id = ref_id
+    node.path = Path.new(manager.get(parent.node.ref_id).path):join(name):posix_path()
 
     parent.node.type = "directory"
     parent.node.children = parent.node.children or {}
