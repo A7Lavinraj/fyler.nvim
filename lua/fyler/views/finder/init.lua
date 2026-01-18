@@ -63,6 +63,17 @@ function Finder:open(kind)
       ["BufReadCmd"] = function() self:dispatch_refresh() end,
       ["BufWriteCmd"] = function() self:dispatch_mutation() end,
       [{"CursorMoved","CursorMovedI"}] = function() self:clamp_cursor() end,
+      ["BufLeave"] = function()
+        if not view_cfg.close_on_leave then return end
+        if self.win.kind ~= "float" then return end
+        vim.schedule(function()
+          if not self:isopen() then return end
+          -- Don't close if focus moved to another float (e.g., confirmation)
+          local win_config = vim.api.nvim_win_get_config(0)
+          if win_config.relative ~= "" then return end
+          self:close()
+        end)
+      end,
     },
     border        = view_cfg.win.border,
     bufname       = self.uri,

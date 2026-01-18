@@ -83,6 +83,8 @@ To know more about plugin customization. visit:
       -- View is a plugin component with dedicated window, UI and config
       views = {
         finder = {
+          -- Close float window when leaving the buffer
+          close_on_leave = false,
           -- Automatically closes after open a file
           close_on_select = true,
           -- Skip confirmation for simple operations
