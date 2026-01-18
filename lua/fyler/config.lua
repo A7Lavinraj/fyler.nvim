@@ -96,6 +96,7 @@ local DEPRECATION_RULES = {
 ---@field win_opts table<string, any>
 
 ---@class FylerConfigViewsFinder
+---@field close_on_leave boolean
 ---@field close_on_select boolean
 ---@field confirm_simple boolean
 ---@field default_explorer boolean
@@ -167,6 +168,8 @@ function config.defaults()
     -- View is a plugin component with dedicated window, UI and config
     views = {
       finder = {
+        -- Close float window when leaving the buffer
+        close_on_leave = false,
         -- Automatically closes after open a file
         close_on_select = true,
         -- Skip confirmation for simple operations

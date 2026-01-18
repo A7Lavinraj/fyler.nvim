@@ -58,6 +58,7 @@ T["Setup Config"] = function()
   expect_config("integrations.icon", "mini_icons")
   expect_config("integrations.winpick", "none")
 
+  expect_config("views.finder.close_on_leave", false)
   expect_config("views.finder.close_on_select", true)
   expect_config("views.finder.confirm_simple", false)
   expect_config("views.finder.default_explorer", false)
