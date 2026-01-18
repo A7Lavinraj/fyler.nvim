@@ -176,12 +176,9 @@ function config.defaults()
         -- Move to trash instead of permanent delete - MACOS not supported
         delete_to_trash = false,
         -- Define order of information columns
-        columns_order = { "git", "diagnostic" },
+        columns_order = { "permission", "size", "git", "diagnostic" },
         -- Define configuration fo each available information column
         columns = {
-          permissions = {
-            enabled = true,
-          },
           git = {
             enabled = true,
             symbols = {
@@ -204,12 +201,18 @@ function config.defaults()
               Hint = "H",
             },
           },
+          permission = {
+            enabled = true,
+          },
+          size = {
+            enabled = true,
+          },
         },
         -- Overrides directory icons for vairous state
         icon = {
-          directory_collapsed = nil,
           directory_empty = nil,
           directory_expanded = nil,
+          directory_collapsed = nil,
         },
         -- Defines indentation guides config
         indentscope = {
