@@ -179,6 +179,9 @@ function config.defaults()
         columns_order = { "git", "diagnostic" },
         -- Define configuration fo each available information column
         columns = {
+          permissions = {
+            enabled = true,
+          },
           git = {
             enabled = true,
             symbols = {
