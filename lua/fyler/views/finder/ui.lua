@@ -1,3 +1,4 @@
+local Path = require("fyler.lib.path")
 local Ui = require("fyler.lib.ui")
 local config = require("fyler.config")
 local diagnostic = require("fyler.lib.diagnostic")
@@ -95,12 +96,12 @@ M.tag = 0
 
 -- NOTE: Detail columns now return data via callback instead of directly updating UI
 local columns = {
-  git = function(context, _, onbuild)
-    git.map_entries_async(context.root_dir, context.get_all_paths(), function(entries)
+  git = function(ctx, _, _next)
+    git.map_entries_async(ctx.root_dir, ctx.get_all_paths(), function(entries)
       local highlights, column = {}, {}
 
       for i, get_entry in ipairs(entries) do
-        local entry_data = context.get_entry_data(i)
+        local entry_data = ctx.get_entry_data(i)
         if entry_data then
           local hl = get_entry[2]
           highlights[i] = hl or ((entry_data.type == "directory") and "FylerFSDirectoryName" or nil)
@@ -108,19 +109,16 @@ local columns = {
         table.insert(column, Text(nil, { virt_text = { get_entry } }))
       end
 
-      onbuild({
-        column = column,
-        highlights = highlights,
-      })
+      _next({ column = column, highlights = highlights })
     end)
   end,
 
-  diagnostic = function(context, _, onbuild)
-    diagnostic.map_entries_async(context.root_dir, context.get_all_paths(), function(entries)
+  diagnostic = function(ctx, _, _next)
+    diagnostic.map_entries_async(ctx.root_dir, ctx.get_all_paths(), function(entries)
       local highlights, column = {}, {}
 
       for i, get_entry in ipairs(entries) do
-        local entry_data = context.get_entry_data(i)
+        local entry_data = ctx.get_entry_data(i)
         if entry_data then
           local hl = get_entry[2]
           highlights[i] = hl or ((entry_data.type == "directory") and "FylerFSDirectoryName" or nil)
@@ -128,11 +126,98 @@ local columns = {
         table.insert(column, Text(nil, { virt_text = { get_entry } }))
       end
 
-      onbuild({
-        column = column,
-        highlights = highlights,
-      })
+      _next({ column = column, highlights = highlights })
     end)
+  end,
+
+  permission = function(ctx, _, _next)
+    local function get_permissions(path)
+      local stat = Path.new(path):lstats()
+      if not stat then return "----------" end
+
+      local mode = stat.mode
+      local perms = {}
+
+      if stat.type == "directory" then
+        table.insert(perms, "d")
+      elseif stat.type == "link" then
+        table.insert(perms, "l")
+      else
+        table.insert(perms, "-")
+      end
+
+      table.insert(perms, (mode % 512 >= 256) and "r" or "-")
+      table.insert(perms, (mode % 256 >= 128) and "w" or "-")
+      table.insert(perms, (mode % 128 >= 64) and "x" or "-")
+
+      table.insert(perms, (mode % 64 >= 32) and "r" or "-")
+      table.insert(perms, (mode % 32 >= 16) and "w" or "-")
+      table.insert(perms, (mode % 16 >= 8) and "x" or "-")
+
+      table.insert(perms, (mode % 8 >= 4) and "r" or "-")
+      table.insert(perms, (mode % 4 >= 2) and "w" or "-")
+      table.insert(perms, (mode % 2 >= 1) and "x" or "-")
+
+      return table.concat(perms)
+    end
+
+    local highlights, column = {}, {}
+
+    for i = 1, #ctx.entries do
+      local entry_data = ctx.get_entry_data(i)
+      if entry_data then
+        local perms = get_permissions(entry_data.path)
+        table.insert(column, Text(nil, { virt_text = { { perms, "Comment" } } }))
+      else
+        table.insert(column, Text(nil, { virt_text = { { "" } } }))
+      end
+    end
+
+    _next({ column = column, highlights = highlights })
+  end,
+
+  size = function(ctx, _, _next)
+    local function get_size(path)
+      if Path.new(path):is_directory() then return nil end
+
+      local stat = Path.new(path):stats()
+      if not stat then return nil end
+
+      return stat.size
+    end
+
+    local function format_size(bytes)
+      if not bytes or bytes < 0 then return "     -" end
+
+      local units = { "B", "K", "M", "G", "T" }
+      local unit_index = 1
+      local size = bytes
+
+      while size >= 1024 and unit_index < #units do
+        size = size / 1024
+        unit_index = unit_index + 1
+      end
+
+      local formatted
+      if unit_index == 1 then
+        formatted = string.format("%d%s", size, units[unit_index])
+      else
+        formatted = string.format("%.1f%s", size, units[unit_index])
+      end
+
+      return string.format("%6s", formatted)
+    end
+
+    local highlights, column = {}, {}
+
+    for i = 1, #ctx.entries do
+      table.insert(
+        column,
+        Text(nil, { virt_text = { { format_size(get_size(ctx.get_entry_data(i).path)), "Comment" } } })
+      )
+    end
+
+    _next({ column = column, highlights = highlights })
   end,
 }
 
@@ -180,7 +265,11 @@ local function collect_and_render_details(tag, context, files_column, oncollect)
       local detail_columns = { Column(files_column) }
       for _, col_name in ipairs(COLUMN_ORDER) do
         local result = results[col_name]
-        if result and result.column then table.insert(detail_columns, Column(result.column)) end
+        if result and result.column then
+          if #detail_columns > 0 then table.insert(detail_columns, Text("  ")) end
+
+          table.insert(detail_columns, Column(result.column))
+        end
       end
 
       oncollect({ tag = "files", children = { Row(detail_columns) } }, { partial = true })

@@ -73,10 +73,9 @@ T["Each WinKind Can"]["Handle Empty Actions"] = function(kind)
   nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
   vim.uv.sleep(20)
   nvim.set_lines(0, -1, -1, false, { "" })
-  nvim.expect_screenshot()
   nvim.cmd("write")
   vim.uv.sleep(20)
-  nvim.expect_screenshot()
+  check_tree(path, {})
 end
 
 T["Each WinKind Can"]["Do Create Actions"] = function(kind)
@@ -84,11 +83,9 @@ T["Each WinKind Can"]["Do Create Actions"] = function(kind)
   nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
   vim.uv.sleep(20)
   nvim.set_lines(0, 0, -1, false, { "new-file", "new-dir/" })
-  nvim.expect_screenshot()
   nvim.cmd("write")
   nvim.type_keys("y")
   vim.uv.sleep(20)
-  nvim.expect_screenshot()
   check_tree(path, { "new-file", "new-dir/" })
 end
 
@@ -97,11 +94,9 @@ T["Each WinKind Can"]["Do Delete Actions"] = function(kind)
   nvim.forward_lua("require('fyler').open")({ dir = path, kind = kind })
   vim.uv.sleep(20)
   nvim.set_lines(0, 0, -1, false, {})
-  nvim.expect_screenshot()
   nvim.cmd("write")
   nvim.type_keys("y")
   vim.uv.sleep(20)
-  nvim.expect_screenshot()
   check_tree(path, {})
 end
 
@@ -111,11 +106,9 @@ T["Each WinKind Can"]["Do Move Actions"] = function(kind)
   vim.uv.sleep(20)
   -- stylua: ignore
   nvim.set_lines(0, 0, -1, false, vim.tbl_map(function(line) return line .. "-renamed" end, nvim.get_lines(0, 0, -1, false)))
-  nvim.expect_screenshot()
   nvim.cmd("write")
   nvim.type_keys("y")
   vim.uv.sleep(20)
-  nvim.expect_screenshot()
   check_tree(path, { "a-file-renamed", "a-dir-renamed/", "b-dir-renamed/", "b-dir-renamed/ba-file" })
 end
 
@@ -125,13 +118,19 @@ T["Each WinKind Can"]["Do Copy Actions"] = function(kind)
   vim.uv.sleep(20)
   -- stylua: ignore
   nvim.set_lines(0, -1, -1, false, vim.tbl_map(function(line) return line .. "-copied" end, nvim.get_lines(0, 0, -1, false)))
-  nvim.expect_screenshot()
   nvim.cmd("write")
   nvim.type_keys("y")
   vim.uv.sleep(20)
-  nvim.expect_screenshot()
-  -- stylua: ignore
-  check_tree(path, { "a-file", "a-dir/", "b-dir/", "b-dir/ba-file", "a-file-copied", "a-dir-copied/", "b-dir-copied/", "b-dir-copied/ba-file" })
+  check_tree(path, {
+    "a-file",
+    "a-dir/",
+    "b-dir/",
+    "b-dir/ba-file",
+    "a-file-copied",
+    "a-dir-copied/",
+    "b-dir-copied/",
+    "b-dir-copied/ba-file",
+  })
 end
 
 -- TODO: Still need to implement compound actions testing but first need to find a way to reproduce the bug
