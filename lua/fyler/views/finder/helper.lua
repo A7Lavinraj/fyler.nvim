@@ -12,14 +12,13 @@ function M.build_protocol_uri(tab, dir) return string.format("fyler://%s//%s", t
 ---@param uri string|nil
 ---@return string
 function M.normalize_uri(uri)
-  local fs = require("fyler.lib.fs")
   local dir, tab = nil, nil
   if not uri or uri == "" then
-    dir = fs.cwd()
+    dir = vim.fn.getcwd()
     tab = tostring(vim.api.nvim_get_current_tabpage())
   elseif M.is_protocol_uri(uri) then
     tab, dir = M.parse_protocol_uri(uri)
-    dir = dir or fs.cwd()
+    dir = dir or vim.fn.getcwd()
     tab = tab or tostring(vim.api.nvim_get_current_tabpage())
   else
     dir = uri

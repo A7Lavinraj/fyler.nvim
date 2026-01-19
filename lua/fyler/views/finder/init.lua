@@ -60,9 +60,25 @@ function Finder:open(kind)
   -- stylua: ignore start
   self.win = require("fyler.lib.win").new {
     autocmds      = {
-      ["BufReadCmd"] = function() self:dispatch_refresh() end,
-      ["BufWriteCmd"] = function() self:dispatch_mutation() end,
-      [{"CursorMoved","CursorMovedI"}] = function() self:clamp_cursor() end,
+      ["BufReadCmd"] = function()
+        self:dispatch_refresh()
+      end,
+      ["BufWriteCmd"] = function()
+        self:dispatch_mutation()
+      end,
+      [{"CursorMoved","CursorMovedI"}] = function()
+        local cur = vim.api.nvim_get_current_line()
+        local ref_id = helper.parse_ref_id(cur)
+        if not ref_id then return end
+
+        local _, ub = string.find(cur, ref_id)
+        if not self.win:has_valid_winid() then return end
+
+        local row, col = self.win:get_cursor()
+        if not (row and col) then return end
+
+        if col <= ub then self.win:set_cursor(row, ub + 1) end
+      end,
     },
     border        = view_cfg.win.border,
     bufname       = self.uri,
@@ -96,13 +112,19 @@ function Finder:open(kind)
       indent.detach(self.win)
     end,
     render        = function()
+      if not config.values.views.finder.follow_current_file then
+        return self:dispatch_refresh({ force_update = true })
+      end
+
       local bufname = vim.fn.bufname("#")
       if bufname == "" then
         return self:dispatch_refresh({ force_update = true })
       end
+
       if helper.is_protocol_uri(bufname) then
         return self:dispatch_refresh({ force_update = true })
       end
+
       return M.navigate( bufname, { filter = { self.win.bufname }, force_update = true })
     end,
     right         = view_cfg.win.right,
@@ -185,20 +207,6 @@ function Finder:dispatch_refresh(opts)
       )
     end)
   end)
-end
-
-function Finder:clamp_cursor()
-  local cur = vim.api.nvim_get_current_line()
-  local ref_id = helper.parse_ref_id(cur)
-  if not ref_id then return end
-
-  local _, ub = string.find(cur, ref_id)
-  if not self.win:has_valid_winid() then return end
-
-  local row, col = self.win:get_cursor()
-  if not (row and col) then return end
-
-  if col <= ub then self.win:set_cursor(row, ub + 1) end
 end
 
 local function run_mutation(operations)

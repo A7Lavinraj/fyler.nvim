@@ -2,15 +2,13 @@ local Path = require("fyler.lib.path")
 local hooks = require("fyler.hooks")
 local util = require("fyler.lib.util")
 
-local cmd = {}
+local M = {}
 
-function cmd.cwd() return vim.fn.getcwd() end
-
-function cmd.write(opts, _next)
+function M.write(opts, _next)
   local path = Path.new(opts.path):os_path()
   local data = opts.data or {}
 
-  cmd.mkdir({
+  M.mkdir({
     path = Path.new(path):parent():os_path(),
     flags = { p = true },
   }, function(err)
@@ -28,7 +26,7 @@ function cmd.write(opts, _next)
       vim.uv.fs_write(fd, data, -1, function(err_write, bytes)
         if not bytes then
           vim.uv.fs_close(fd, function()
-            cmd.rm({
+            M.rm({
               path = path,
             }, function() pcall(_next, string.format("Failed to write to %s: %s", path, err_write)) end)
           end)
@@ -40,7 +38,7 @@ function cmd.write(opts, _next)
   end)
 end
 
-function cmd.ls(opts, _next)
+function M.ls(opts, _next)
   local path = Path.new(opts.path):os_path()
 
   vim.uv.fs_opendir(path, function(err_open, dir)
@@ -50,7 +48,8 @@ function cmd.ls(opts, _next)
     end
 
     local contents = {}
-    -- NOTE: Polling is necessary because `fs_readdir: async_version` list contents in chunks
+    -- NOTE: Polling is necessary because `fs_readdir: async_version` list
+    -- contents in chunks
     local function poll_entries()
       vim.uv.fs_readdir(dir, function(err_read, entries)
         if err_read then
@@ -92,7 +91,7 @@ function cmd.ls(opts, _next)
   end, 1000)
 end
 
-function cmd.touch(opts, _next)
+function M.touch(opts, _next)
   local path = Path.new(opts.path):os_path()
 
   vim.uv.fs_open(path, "a", 420, function(err_open, fd)
@@ -105,7 +104,7 @@ function cmd.touch(opts, _next)
   end)
 end
 
-function cmd.mkdir(opts, _next)
+function M.mkdir(opts, _next)
   local flags = opts.flags or {}
 
   if flags.p then
@@ -120,7 +119,7 @@ function cmd.mkdir(opts, _next)
       if Path.new(prefixes[index]):exists() then
         create_next(index + 1)
       else
-        cmd.mkdir({ path = prefixes[index] }, function() create_next(index + 1) end)
+        M.mkdir({ path = prefixes[index] }, function() create_next(index + 1) end)
       end
     end
 
@@ -155,7 +154,7 @@ local function _read_dir_iter(opts, _next)
   end, 1000)
 end
 
-function cmd.rm(opts, _next)
+function M.rm(opts, _next)
   local path = Path.new(opts.path):os_path()
   local flags = opts.flags or {}
 
@@ -183,7 +182,7 @@ function cmd.rm(opts, _next)
           return
         end
 
-        cmd.rm({
+        M.rm({
           path = Path.new(path):join(entries[index].name):os_path(),
           flags = flags,
         }, function(err)
@@ -202,16 +201,16 @@ function cmd.rm(opts, _next)
   end
 end
 
-function cmd.mv(opts, _next)
+function M.mv(opts, _next)
   local src = Path.new(opts.src):os_path()
   local dst = Path.new(opts.dst):os_path()
 
-  cmd.mkdir({
+  M.mkdir({
     path = Path.new(dst):parent():os_path(),
     flags = { p = true },
   }, function()
     if Path.new(src):is_directory() then
-      cmd.mkdir({
+      M.mkdir({
         path = dst,
         flags = { p = true },
       }, function()
@@ -234,7 +233,7 @@ function cmd.mv(opts, _next)
               return
             end
 
-            cmd.mv({
+            M.mv({
               src = Path.new(src):join(entries[index].name):os_path(),
               dst = Path.new(dst):join(entries[index].name):os_path(),
             }, function(err)
@@ -255,7 +254,7 @@ function cmd.mv(opts, _next)
   end)
 end
 
-function cmd.cp(opts, _next)
+function M.cp(opts, _next)
   local src = Path.new(opts.src):os_path()
   local dst = Path.new(opts.dst):os_path()
   local flags = opts.flags or {}
@@ -263,7 +262,7 @@ function cmd.cp(opts, _next)
   if Path.new(src):is_directory() then
     assert(flags.r, "cannot copy directory without -r flag: " .. src)
 
-    cmd.mkdir({
+    M.mkdir({
       path = dst,
       flags = { p = true },
     }, function()
@@ -286,7 +285,7 @@ function cmd.cp(opts, _next)
             return
           end
 
-          cmd.cp({
+          M.cp({
             src = Path.new(src):join(entries[index].name):os_path(),
             dst = Path.new(dst):join(entries[index].name):os_path(),
             flags = flags,
@@ -303,7 +302,7 @@ function cmd.cp(opts, _next)
       end)
     end)
   else
-    cmd.mkdir({
+    M.mkdir({
       path = Path.new(dst):parent():os_path(),
       flags = { p = true },
     }, function()
@@ -312,8 +311,8 @@ function cmd.cp(opts, _next)
   end
 end
 
-function cmd.create(opts, _next)
-  cmd.mkdir({
+function M.create(opts, _next)
+  M.mkdir({
     path = Path.new(opts.path):parent():os_path(),
     flags = { p = true },
   }, function(err)
@@ -323,15 +322,15 @@ function cmd.create(opts, _next)
     end
 
     if Path.new(opts.path):is_directory() then
-      cmd.mkdir({ path = opts.path }, _next)
+      M.mkdir({ path = opts.path }, _next)
     else
-      cmd.touch({ path = opts.path }, _next)
+      M.touch({ path = opts.path }, _next)
     end
   end)
 end
 
-function cmd.delete(opts, _next)
-  cmd.rm({
+function M.delete(opts, _next)
+  M.rm({
     path = opts.path,
     flags = { r = true },
   }, function(err)
@@ -346,8 +345,8 @@ function cmd.delete(opts, _next)
   end)
 end
 
-function cmd.move(opts, _next)
-  cmd.mv({
+function M.move(opts, _next)
+  M.mv({
     src = opts.src,
     dst = opts.dst,
   }, function(err)
@@ -362,55 +361,22 @@ function cmd.move(opts, _next)
   end)
 end
 
-function cmd.copy(opts, _next)
-  cmd.cp({
+function M.copy(opts, _next)
+  M.cp({
     src = Path.new(opts.src):os_path(),
     dst = Path.new(opts.dst):os_path(),
     flags = { r = true },
   }, _next)
 end
 
-function cmd.trash(...)
+function M.trash(...)
   local trash = require("fyler.lib.trash")
   if trash then
     trash.dump(...)
   else
     vim.notify_once("TRASH is supported for this platform, fallback to DELETE", vim.log.levels.WARN)
-    cmd.delete(...)
+    M.delete(...)
   end
 end
 
-local function builder(fn)
-  local meta = {
-    __call = function(t, ...)
-      local args = { ... }
-      local callback = nil
-
-      -- Check if last arg is a callback
-      if type(args[#args]) == "function" then callback = table.remove(args) end
-
-      -- Add flags if they exist and are not empty
-      if t.flags and not vim.tbl_isempty(t.flags) then table.insert(args, t.flags) end
-
-      -- Add callback back at the end
-      if callback then table.insert(args, callback) end
-
-      return fn(util.unpack(args))
-    end,
-
-    __index = function(t, k)
-      return setmetatable({
-        flags = util.tbl_merge_force(t.flags or {}, { [k] = true }),
-      }, getmetatable(t))
-    end,
-  }
-
-  return setmetatable({ flags = {} }, meta)
-end
-
-return setmetatable({}, {
-  __index = function(_, k)
-    assert(cmd[k], "command not implemented: " .. k)
-    return builder(cmd[k])
-  end,
-})
+return M
