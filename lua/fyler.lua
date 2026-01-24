@@ -59,7 +59,7 @@ local did_setup = false
 
 ---@param opts FylerSetup|nil
 function M.setup(opts)
-  if vim.fn.has("nvim-0.11") ~= 1 then return vim.notify("Fyler requires at least NVIM 0.11") end
+  if vim.fn.has("nvim-0.11") == 0 then return vim.notify("Fyler requires at least NVIM 0.11") end
 
   if did_setup then return end
 
@@ -67,7 +67,7 @@ function M.setup(opts)
 
   did_setup = true
 
-  local finder = require("fyler.views.finder")
+  local finder = setmetatable({}, { __index = function(_, k) return require("fyler.views.finder")[k] end })
 
   -- Fyler.API: Opens finder view with provided options
   M.open = function(args)
