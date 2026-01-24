@@ -40,8 +40,20 @@ local function _select(self, opener, opts)
     or self.win.kind:match("^float")
     or config.values.views.finder.close_on_select
 
+  local function get_target_window()
+    if vim.api.nvim_win_is_valid(self.win.origin_win) then return self.win.origin_win end
+
+    for _, winid in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+      if vim.api.nvim_win_get_config(winid).relative == "" then
+        self.win.origin_win = winid
+        return winid
+      end
+    end
+  end
+
   local function open_in_window(winid)
-    winid = winid or vim.fn.win_getid(vim.fn.winnr("#"))
+    winid = winid or get_target_window()
+    assert(winid and vim.api.nvim_win_is_valid(winid), "Unexpected invalid window")
 
     if should_close then self:action_call("n_close") end
 

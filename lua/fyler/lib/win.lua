@@ -242,8 +242,10 @@ function Win:config()
 end
 
 function Win:show()
-  local win_config = self:config()
   local current_bufnr = vim.api.nvim_get_current_buf()
+  self.origin_win = vim.api.nvim_get_current_win()
+
+  local win_config = self:config()
   if win_config.split and (win_config.split:match("_all$") or win_config.split:match("_most$")) then
     if win_config.split == "left_most" then
       vim.api.nvim_command(string.format("topleft %dvsplit", win_config.width))
