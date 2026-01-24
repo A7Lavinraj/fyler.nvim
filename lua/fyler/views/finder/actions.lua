@@ -35,25 +35,26 @@ local function _select(self, opener, opts)
     return self:dispatch_refresh({ force_update = true })
   end
 
-  local function open_in_window(winid)
-    if not winid then return end
-    vim.api.nvim_set_current_win(winid)
-    opener(entry.path)
-  end
-
   -- Close if kind=replace|float or config.values.views.finder.close_on_select is enabled
   local should_close = self.win.kind:match("^replace")
     or self.win.kind:match("^float")
     or config.values.views.finder.close_on_select
 
-  if should_close then
-    self:action_call("n_close")
-    open_in_window(vim.api.nvim_get_current_win())
-  elseif opts.winpick then
+  local function open_in_window(winid)
+    winid = winid or vim.fn.win_getid(vim.fn.winnr("#"))
+
+    if should_close then self:action_call("n_close") end
+
+    vim.api.nvim_set_current_win(winid)
+
+    opener(entry.path)
+  end
+
+  if opts.winpick then
     -- For split variants, we should pick windows
     config.winpick_provider({ self.win.winid }, open_in_window, config.winpick_opts)
   else
-    opener(entry.path)
+    open_in_window()
   end
 end
 
