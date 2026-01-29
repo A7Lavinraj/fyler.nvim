@@ -66,7 +66,7 @@ function M.setup(config)
         if helper.is_protocol_uri(arg.file) or arg.file == "" then return end
 
         vim.schedule(function()
-          if not util.get_buf_option(arg.buf, "filetype") == "fyler" then fyler.navigate(arg.file) end
+          if not util.get_buf_option(arg.buf, "filetype") ~= "fyler" then fyler.navigate(arg.file) end
         end)
       end,
     })
