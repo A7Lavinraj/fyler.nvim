@@ -4,7 +4,6 @@
 local Trie = {}
 Trie.__index = Trie
 
----Create a new Trie node
 ---@param value any|nil
 ---@return Trie
 function Trie.new(value)
@@ -16,13 +15,17 @@ function Trie.new(value)
   return instance
 end
 
----Insert a value at the given path segments
 ---@param segments string[]
 ---@param value any
 ---@return Trie -- returns the final node
 function Trie:insert(segments, value)
   if #segments == 0 then
-    self.value = value
+    if type(value) == "function" then
+      self.value = value(self.value)
+    else
+      self.value = value
+    end
+
     return self
   end
 
@@ -37,7 +40,6 @@ function Trie:insert(segments, value)
   return self.children[head]:insert(rest, value)
 end
 
----Find a node at the given path segments
 ---@param segments string[]
 ---@return Trie|nil
 function Trie:find(segments)
@@ -54,7 +56,6 @@ function Trie:find(segments)
   return self.children[head]:find(rest)
 end
 
----Delete a node at the given path segments
 ---@param segments string[]
 ---@return boolean -- true if deleted, false if not found
 function Trie:delete(segments)
@@ -78,6 +79,15 @@ function Trie:delete(segments)
   end
 
   return self.children[head]:delete(rest)
+end
+
+---@param fn fun(node: Trie): boolean|nil
+function Trie:dfs(fn)
+  if fn(self) == false then return end
+
+  for _, child in pairs(self.children) do
+    child:dfs(fn)
+  end
 end
 
 return Trie
