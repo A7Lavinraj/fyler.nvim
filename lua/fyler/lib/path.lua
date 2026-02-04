@@ -163,7 +163,7 @@ function Path:res_link()
   return os_path, (Path.new(os_path):lstats() or {}).type
 end
 
----@return function
+---@return fun(): boolean|nil, string|nil
 function Path:iter()
   local segments = self:segments()
   local i = 0
@@ -174,7 +174,7 @@ function Path:iter()
       for j = 1, i do
         table.insert(path_parts, segments[j])
       end
-      return i, table.concat({ "", util.unpack(path_parts) }, "/")
+      return i == #segments, table.concat({ "", util.unpack(path_parts) }, "/")
     end
   end
 end
