@@ -257,10 +257,10 @@ local function should_mutate(operations, cwd)
   return get_confirmation(require("fyler.views.finder.ui").operations(util.tbl_map(operations, function(operation)
     local result = vim.deepcopy(operation)
     if operation.type == "create" or operation.type == "delete" then
-      result.path = cwd:relative(operation.path)
+      result.path = cwd:relative(operation.path) or operation.path
     else
-      result.src = cwd:relative(operation.src)
-      result.dst = cwd:relative(operation.dst)
+      result.src = cwd:relative(operation.src) or operation.src
+      result.dst = cwd:relative(operation.dst) or operation.dst
     end
     return result
   end)))

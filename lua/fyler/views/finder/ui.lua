@@ -166,7 +166,7 @@ local columns = {
     for i = 1, #ctx.entries do
       local entry_data = ctx.get_entry_data(i)
       if entry_data then
-        local perms = get_permissions(entry_data.path)
+        local perms = get_permissions(entry_data.item.link or entry_data.path)
         table.insert(column, Text(nil, { virt_text = { { perms, "Comment" } } }))
       else
         table.insert(column, Text(nil, { virt_text = { { "" } } }))
