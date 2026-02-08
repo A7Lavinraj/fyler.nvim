@@ -176,7 +176,7 @@ function config.defaults()
         -- Move to trash instead of permanent delete - MACOS not supported
         delete_to_trash = false,
         -- Define order of information columns
-        columns_order = { "permission", "size", "git", "diagnostic" },
+        columns_order = { "link", "permission", "size", "git", "diagnostic" },
         -- Define configuration fo each available information column
         columns = {
           git = {
@@ -200,6 +200,9 @@ function config.defaults()
               Info = "I",
               Hint = "H",
             },
+          },
+          link = {
+            enabled = true,
           },
           permission = {
             enabled = true,
