@@ -56,7 +56,7 @@ function Files:node_entry(ref_id) return manager.get(assert(ref_id, "cannot find
 ---@return Trie|nil
 function Files:find_node_by_ref_id(ref_id)
   local entry = manager.get(ref_id)
-  local segments = self:path_to_segments(entry.path)
+  local segments = self:path_to_segments(entry.link or entry.path)
   if not segments then return nil end
   return self.trie:find(segments)
 end
@@ -91,7 +91,7 @@ end
 ---@return integer|nil
 function Files:find_parent(ref_id)
   local entry = manager.get(ref_id)
-  local segments = self:path_to_segments(entry.path)
+  local segments = self:path_to_segments(entry.link or entry.path)
 
   if not segments or #segments == 0 then return nil end
 

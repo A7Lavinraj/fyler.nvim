@@ -2,6 +2,7 @@ local Path = require("fyler.lib.path")
 local async = require("fyler.lib.async")
 local config = require("fyler.config")
 local helper = require("fyler.views.finder.helper")
+local manager = require("fyler.views.finder.files.manager")
 local util = require("fyler.lib.util")
 
 local M = {}
@@ -363,7 +364,15 @@ M.navigate = vim.schedule_wrap(function(path, opts)
       if opts.force_update then update_table() end
 
       local ref_id
-      if path then ref_id = util.select_n(2, navigate_path(vim.fn.fnamemodify(Path.new(path):posix_path(), ":p"))) end
+      if path then
+        local path = vim.fn.fnamemodify(Path.new(path):posix_path(), ":p")
+        ref_id = util.select_n(2, navigate_path(path))
+
+        if not ref_id then
+          local link = manager.find_link_path_from_resolved(path)
+          if link then ref_id = util.select_n(2, navigate_path(link)) end
+        end
+      end
 
       opts.onrender = function() set_cursor(finder, ref_id) end
 
