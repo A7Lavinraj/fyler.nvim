@@ -96,6 +96,21 @@ M.tag = 0
 
 -- NOTE: Detail columns now return data via callback instead of directly updating UI
 local columns = {
+  link = function(ctx, _, _next)
+    local column = {}
+
+    for i = 1, #ctx.entries do
+      local entry_data = ctx.get_entry_data(i)
+      if entry_data and entry_data.item.link then
+        table.insert(column, Text(nil, { virt_text = { { " --> " .. entry_data.path, "FylerFSLink" } } }))
+      else
+        table.insert(column, Text(nil, { virt_text = { { "" } } }))
+      end
+    end
+
+    _next({ column = column, highlights = {} })
+  end,
+
   git = function(ctx, _, _next)
     git.map_entries_async(ctx.root_dir, ctx.get_all_paths(), function(entries)
       local highlights, column = {}, {}
@@ -166,7 +181,7 @@ local columns = {
     for i = 1, #ctx.entries do
       local entry_data = ctx.get_entry_data(i)
       if entry_data then
-        local perms = get_permissions(entry_data.path)
+        local perms = get_permissions(entry_data.item.link or entry_data.path)
         table.insert(column, Text(nil, { virt_text = { { perms, "Comment" } } }))
       else
         table.insert(column, Text(nil, { virt_text = { { "" } } }))

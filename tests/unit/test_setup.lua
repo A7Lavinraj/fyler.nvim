@@ -62,7 +62,7 @@ T["Setup Config"] = function()
   expect_config("views.finder.confirm_simple", false)
   expect_config("views.finder.default_explorer", false)
   expect_config("views.finder.delete_to_trash", false)
-  expect_config("views.finder.columns_order", { "permission", "size", "git", "diagnostic" })
+  expect_config("views.finder.columns_order", { "link", "permission", "size", "git", "diagnostic" })
 
   expect_config("views.finder.columns.git.enabled", true)
   expect_config("views.finder.columns.git.symbols.Untracked", "?")
@@ -79,6 +79,8 @@ T["Setup Config"] = function()
   expect_config("views.finder.columns.diagnostic.symbols.Warn", "W")
   expect_config("views.finder.columns.diagnostic.symbols.Info", "I")
   expect_config("views.finder.columns.diagnostic.symbols.Hint", "H")
+
+  expect_config("views.finder.columns.link.enabled", true)
 
   expect_config("views.finder.columns.permission.enabled", true)
 

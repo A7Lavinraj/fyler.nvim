@@ -23,7 +23,8 @@ Entry.__index = Entry
 local M = {}
 
 local Entries = {}
-local PathToRefId = {}
+local PathToRefId = {} -- entry path (including symlink path) -> ref_id
+local ResolvedPathToRefId = {} -- resolved path -> ref_id (for follow_current_file on symlinks)
 local NextRefId = 1
 
 local DEFAULT_ENTRY = {
@@ -52,6 +53,7 @@ function M.set(opts)
 
   if entry then
     Entries[ref_id] = util.tbl_merge_force(entry, opts)
+    if opts.link then ResolvedPathToRefId[opts.path] = ref_id end
     return ref_id
   end
 
@@ -63,9 +65,31 @@ function M.set(opts)
   new_entry.ref_id = ref_id
 
   PathToRefId[path] = ref_id
+  if opts.link then ResolvedPathToRefId[opts.path] = ref_id end
   Entries[ref_id] = new_entry
 
   return ref_id
 end
 
+---@param resolved_path string
+---@return string|nil
+function M.find_link_path_from_resolved(resolved_path)
+  local ref_id = ResolvedPathToRefId[resolved_path]
+  if ref_id then
+    local entry = Entries[ref_id]
+    if entry and entry.link then return entry.link end
+  end
+
+  local parent = resolved_path
+  while parent do
+    parent = parent:match("^(.*)/[^/]+$")
+    if not parent or parent == "/" then break end
+
+    ref_id = ResolvedPathToRefId[parent]
+    if ref_id then
+      local entry = Entries[ref_id]
+      if entry and entry.link then return entry.link .. resolved_path:sub(#parent + 1) end
+    end
+  end
+end
 return M
