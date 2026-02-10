@@ -131,11 +131,11 @@ end
 function Files:add_child(parent_ref_id, opts)
   local parent_entry = manager.get(parent_ref_id)
 
-  opts.path = Path.new(parent_entry.path):join(opts.name):posix_path()
+  opts.path = Path.new(parent_entry.link or parent_entry.path):join(opts.name):posix_path()
 
   local child_ref_id = manager.set(opts)
 
-  local parent_segments = self:path_to_segments(parent_entry.path)
+  local parent_segments = self:path_to_segments(parent_entry.link or parent_entry.path)
   local parent_node = self.trie:find(parent_segments or {})
 
   if parent_node then parent_node.children[opts.name] = Trie.new(child_ref_id) end
@@ -174,7 +174,7 @@ function Files:_update(node, onupdate)
   if not node_entry.open then return onupdate(nil) end
 
   fs.ls({
-    path = Path.new(node_entry.path):os_path(),
+    path = Path.new(node_entry.link or node_entry.path):os_path(),
   }, function(err, entries)
     if err or not entries then return onupdate(err) end
 
