@@ -43,7 +43,8 @@ function Resolver:_parse_buffer()
     end
 
     local current_parent = parent_stack:top()
-    local parent_path = manager.get(current_parent.node.ref_id).path
+    local parent_entry = manager.get(current_parent.node.ref_id)
+    local parent_path = parent_entry.link or parent_entry.path
 
     local child_node = {
       ref_id = entry_ref_id,
