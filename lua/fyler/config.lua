@@ -173,7 +173,7 @@ function config.defaults()
         confirm_simple = false,
         -- Disables NETRW and take over
         default_explorer = false,
-        -- Move to trash instead of permanent delete - MACOS not supported
+        -- Move to trash instead of permanent delete
         delete_to_trash = false,
         -- Define order of information columns
         columns_order = { "link", "permission", "size", "git", "diagnostic" },
