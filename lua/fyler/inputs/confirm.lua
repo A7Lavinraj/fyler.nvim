@@ -5,8 +5,10 @@ local util = require("fyler.lib.util")
 local Confirm = {}
 Confirm.__index = Confirm
 
+local FOOTER = " Want to continue? (y|n) "
+
 local function resolve_dim(width, height)
-  width = math.max(25, math.min(vim.o.columns, width)) + 2
+  width = math.max(#FOOTER, math.min(vim.o.columns, width)) + 2
   height = math.max(1, math.min(16, height))
   local left = math.floor((vim.o.columns - width) * 0.5)
   local top = math.floor((vim.o.lines - height) * 0.5)
@@ -24,10 +26,16 @@ function Confirm:open(options, message, onsubmit)
     left       = left,
     top        = top,
     border     = vim.o.winborder == "" and "rounded" or vim.o.winborder,
-    footer     = " Want to continue? (y|n) ",
+    footer     = FOOTER,
     footer_pos = "center",
     buf_opts   = { modifiable = false },
-    win_opts   = { winhighlight = "Normal:FylerNormal,NormalNC:FylerNormalNC" },
+    win_opts   = {
+      winhighlight = "Normal:FylerNormal,NormalNC:FylerNormalNC",
+      number = false,
+      relativenumber = false,
+      signcolumn = "no",
+      foldcolumn = "0",
+    },
     mappings   = {
       [{ 'y', 'o', '<Enter>' }] = function()
         self.window:hide()
