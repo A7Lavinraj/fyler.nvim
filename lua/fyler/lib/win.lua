@@ -145,9 +145,7 @@ function Win:update_title(title)
 end
 
 function Win:config()
-  local winconfig = {
-    style = "minimal",
-  }
+  local winconfig = {}
 
   ---@param dim integer|string
   ---@return integer|nil, boolean|nil
@@ -304,6 +302,14 @@ function Win:show()
     vim.keymap.set("n", k, v, mappings_opts)
   end
 
+  -- Save original window options before overriding, so they can be restored
+  -- when the fyler window is hidden (important for `replace` kind where the
+  -- same window is reused for the opened file).
+  self._saved_win_opts = {}
+  for option, _ in pairs(self.win_opts or {}) do
+    self._saved_win_opts[option] = util.get_win_option(self.winid, option)
+  end
+
   for option, value in pairs(self.win_opts or {}) do
     util.set_win_option(self.winid, option, value)
   end
@@ -333,6 +339,15 @@ end
 
 function Win:hide()
   if self.kind:match("^replace") then
+    -- Restore original window options before switching buffers, so the opened
+    -- file respects the user's settings (e.g. relativenumber, cursorline).
+    if self._saved_win_opts and self:has_valid_winid() then
+      for option, value in pairs(self._saved_win_opts) do
+        util.set_win_option(self.winid, option, value)
+      end
+      self._saved_win_opts = nil
+    end
+
     local altbufnr = vim.fn.bufnr("#")
     if altbufnr == -1 or altbufnr == self.bufnr then
       util.try(vim.cmd.enew)
