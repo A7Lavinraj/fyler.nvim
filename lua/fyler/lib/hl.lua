@@ -82,6 +82,7 @@ function M.setup()
 
     FylerGitAdded        = { fg = palette.green },
     FylerGitConflict     = { fg = palette.red },
+    FylerGitCopied       = { fg = palette.yellow },
     FylerGitDeleted      = { fg = palette.red },
     FylerGitIgnored      = { fg = palette.grey },
     FylerGitModified     = { fg = palette.yellow },
@@ -89,6 +90,17 @@ function M.setup()
     FylerGitStaged       = { fg = palette.green },
     FylerGitUnstaged     = { fg = palette.orange },
     FylerGitUntracked    = { fg = palette.cyan },
+
+    FylerGitIconAdded     = { link = "FylerGitAdded" },
+    FylerGitIconConflict  = { link = "FylerGitConflict" },
+    FylerGitIconCopied    = { link = "FylerGitCopied" },
+    FylerGitIconDeleted   = { link = "FylerGitDeleted" },
+    FylerGitIconIgnored   = { link = "FylerGitIgnored" },
+    FylerGitIconModified  = { link = "FylerGitModified" },
+    FylerGitIconRenamed   = { link = "FylerGitRenamed" },
+    FylerGitIconStaged    = { link = "FylerGitStaged" },
+    FylerGitIconUnstaged  = { link = "FylerGitUnstaged" },
+    FylerGitIconUntracked = { link = "FylerGitUntracked" },
 
     FylerWinPick         = { fg = palette.white, bg = palette.blue },
 

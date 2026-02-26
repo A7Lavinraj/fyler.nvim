@@ -118,10 +118,10 @@ local columns = {
       for i, get_entry in ipairs(entries) do
         local entry_data = ctx.get_entry_data(i)
         if entry_data then
-          local hl = get_entry[2]
-          highlights[i] = hl or ((entry_data.type == "directory") and "FylerFSDirectoryName" or nil)
+          local name_hl = get_entry[3]
+          highlights[i] = name_hl or ((entry_data.type == "directory") and "FylerFSDirectoryName" or nil)
         end
-        table.insert(column, Text(nil, { virt_text = { get_entry } }))
+        table.insert(column, Text(nil, { virt_text = { { get_entry[1], get_entry[2] } } }))
       end
 
       _next({ column = column, highlights = highlights })
