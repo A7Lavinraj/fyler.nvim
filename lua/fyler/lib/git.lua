@@ -43,6 +43,17 @@ local hl_map = {
   Ignored = "FylerGitIgnored",
 }
 
+local icon_hl_map = {
+  Untracked = "FylerGitIconUntracked",
+  Added = "FylerGitIconAdded",
+  Modified = "FylerGitIconModified",
+  Deleted = "FylerGitIconDeleted",
+  Renamed = "FylerGitIconRenamed",
+  Copied = "FylerGitIconCopied",
+  Conflict = "FylerGitIconConflict",
+  Ignored = "FylerGitIconIgnored",
+}
+
 function M.map_entries_async(root_dir, entries, _next)
   M.build_modified_lookup_for_async(root_dir, function(modified_lookup)
     M.build_ignored_lookup_for_async(root_dir, entries, function(ignored_lookup)
@@ -50,9 +61,11 @@ function M.map_entries_async(root_dir, entries, _next)
       local result = util.tbl_map(
         entries,
         function(e)
+          local status = status_map[e]
           return {
-            config.values.views.finder.columns.git.symbols[icon_map[status_map[e]]] or "",
-            hl_map[icon_map[status_map[e]]],
+            config.values.views.finder.columns.git.symbols[icon_map[status]] or "",
+            icon_hl_map[icon_map[status]],
+            hl_map[icon_map[status]],
           }
         end
       )
