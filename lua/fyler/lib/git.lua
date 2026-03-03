@@ -50,9 +50,22 @@ function M.map_entries_async(root_dir, entries, _next)
       local result = util.tbl_map(
         entries,
         function(e)
+          local status = status_map[e]
+          -- If this entry has no direct status, check if it's inside an
+          -- untracked directory. git status --porcelain only reports the
+          -- top-level directory for fully untracked trees, so child entries
+          -- won't have their own status in the map.
+          if not status then
+            for dir_path, dir_status in pairs(status_map) do
+              if dir_status == "??" and vim.startswith(e, dir_path .. "/") then
+                status = dir_status
+                break
+              end
+            end
+          end
           return {
-            config.values.views.finder.columns.git.symbols[icon_map[status_map[e]]] or "",
-            hl_map[icon_map[status_map[e]]],
+            config.values.views.finder.columns.git.symbols[icon_map[status]] or "",
+            hl_map[icon_map[status]],
           }
         end
       )
@@ -76,7 +89,8 @@ function M.build_modified_lookup_for_async(dir, _next)
       for _, line in process:stdout_iter() do
         if line ~= "" then
           local symbol = line:sub(1, 2)
-          local path = Path.new(dir):join(line:sub(4)):os_path()
+          local raw = line:sub(4):gsub("/$", "")
+          local path = Path.new(dir):join(raw):os_path()
           lookup[path] = symbol
         end
       end
