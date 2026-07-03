@@ -353,11 +353,44 @@ H.compute_fs_actions = function(instance, id_to_path, buf_lines)
 end
 
 ---@private
+---Highlight the currently active file row
+---@param instance fyler.Finder
+H.highlight_active_file = function(instance)
+  if not util.window_is_valid(instance.win_id) then
+    return
+  end
+
+  if vim.api.nvim_win_get_buf(instance.win_id) ~= instance.buf_id then
+    return
+  end
+
+  local line = vim.api.nvim_win_get_cursor(instance.win_id)[1] - 1
+
+  vim.api.nvim_buf_clear_namespace(
+    instance.buf_id,
+    vim.api.nvim_create_namespace('FylerActiveFile'),
+    0,
+    -1
+  )
+
+  vim.api.nvim_buf_set_extmark(
+    instance.buf_id,
+    vim.api.nvim_create_namespace('FylerActiveFile'),
+    line,
+    0,
+    {
+      line_hl_group = 'FylerActiveFile',
+    }
+  )
+end
+
+---@private
 H.finish_refresh = function(instance)
   if instance._view.lnum then
     if util.window_is_valid(instance.win_id) then
       vim.api.nvim_win_call(instance.win_id, function() vim.fn.winrestview({ lnum = instance._view.lnum, col = 0 }) end)
     end
+    H.highlight_active_file(instance)
     instance._view = {}
   end
 
@@ -940,18 +973,20 @@ function Finder:open()
 
   au('VimResized', function() self:resize() end, 'Ensure resize')
 
-  if self.opts.bound_cursor then
-    au('CursorMoved', function()
-      if not util.window_is_valid(self.win_id) then return end
+  au('CursorMoved', function()
+    if not util.window_is_valid(self.win_id) then return end
 
+    H.highlight_active_file(self)
+
+    if self.opts.bound_cursor then
       local line = vim.api.nvim_get_current_line()
       local _, id_end = line:find('/%d+ ')
       if not id_end then return end
 
       local pos = vim.api.nvim_win_get_cursor(self.win_id)
       if pos[2] < id_end then vim.api.nvim_win_set_cursor(self.win_id, { pos[1], id_end }) end
-    end, 'Ensure cursor boundary')
-  end
+    end
+  end, 'Active file highlight and cursor boundary')
 
   vim.cmd.tcd({ args = { vim.fn.fnameescape(self.opts.root_path) }, mods = { silent = true } })
 
