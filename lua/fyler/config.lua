@@ -309,6 +309,10 @@ local default_config = {
         action = 'select',
         args = { pick = true },
       },
+      ['<2-LeftMouse>'] = {
+        action = 'select',
+        args = { pick = true },
+      },
       ['='] = {
         action = 'visit',
       },
