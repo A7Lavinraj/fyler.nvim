@@ -78,12 +78,14 @@ vim.api.nvim_set_decoration_provider(ns, {
         local indent = indents[l]
         if indent and indent > 0 then
           local depth = indent / sw
+          local line_len = #vim.fn.getline(l)
 
           for lvl = 1, depth do
             local ilevel = lvl * sw
             local col = (lvl - 1) * sw
-            local ch
+            if col > line_len then break end
 
+            local ch
             if lvl < depth then
               -- Use scanbot (full buffer) not botrow (visible window)
               ch = has_sibling_below(indents, blanks, l, scanbot, ilevel) and '│ ' or '  '
