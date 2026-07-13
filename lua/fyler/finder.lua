@@ -671,6 +671,7 @@ function Finder:follow(args)
   local accumulated = root_path
   for _, segment in ipairs(libpath.do_split(relative)) do
     accumulated = libpath.do_join(accumulated, segment)
+    if libfs.is_hidden(accumulated, self.cache.ui.hidden_items) then break end
     self.state:toggle(accumulated, true)
   end
 
