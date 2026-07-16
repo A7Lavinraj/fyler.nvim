@@ -2,7 +2,6 @@ local config = Fyler.import('fyler.config')
 local extensions = Fyler.import('fyler.extensions')
 local integration_icon = Fyler.import('fyler.integrations.icon')
 local input = Fyler.import('fyler.input')
-local libfs = Fyler.import('fyler.lib.fs')
 local libpath = Fyler.import('fyler.lib.path')
 local libui = Fyler.import('fyler.lib.ui')
 local state = Fyler.import('fyler.state')
@@ -547,13 +546,11 @@ H.render_tree = function(instance, flat)
   local id_to_line = {}
 
   for _, item in ipairs(flat) do
-    if not libfs.is_hidden(item.path, instance.cache.ui.hidden_items) then
-      local children, name_col = H.build_fs_entry_ui(item)
-      item._name_col = name_col
-      visible[#visible + 1] = item
-      id_to_line[item.id] = #visible
-      rows[#rows + 1] = { tag = 'row', children = children }
-    end
+    local children, name_col = H.build_fs_entry_ui(item)
+    item._name_col = name_col
+    visible[#visible + 1] = item
+    id_to_line[item.id] = #visible
+    rows[#rows + 1] = { tag = 'row', children = children }
   end
 
   instance._id_to_line = id_to_line
@@ -671,7 +668,6 @@ function Finder:follow(args)
   local accumulated = root_path
   for _, segment in ipairs(libpath.do_split(relative)) do
     accumulated = libpath.do_join(accumulated, segment)
-    if libfs.is_hidden(accumulated, self.cache.ui.hidden_items) then break end
     self.state:toggle(accumulated, true)
   end
 
@@ -988,7 +984,7 @@ function Finder:refresh(args)
         return
       end
 
-      local flat = self.state:to_lines()
+      local flat = self.state:to_lines(self.cache.ui.hidden_items)
       local undolevels = vim.bo[self.buf_id].undolevels
       vim.bo[self.buf_id].undolevels = -1
 
@@ -1007,7 +1003,6 @@ end
 
 function Finder:resize() util.window_resize(self.win_id, self.opts) end
 
----@param args { close: boolean|nil, tabedit: boolean|nil, split: boolean|nil, vsplit: boolean|nil, pick: boolean|nil }|nil
 function Finder:select(args)
   args = args or {}
 

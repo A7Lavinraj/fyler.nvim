@@ -197,7 +197,8 @@ function M.new(root_path, scheme)
     rec(self.root, 0)
   end
 
-  function instance:to_lines()
+  ---@param hidden_items table|nil
+  function instance:to_lines(hidden_items)
     local result = {}
 
     self:walk(function(node, depth)
@@ -209,7 +210,7 @@ function M.new(root_path, scheme)
       if entry.type == 'directory' then item.expanded = self.meta[libpath.to_key(entry.path)] or false end
 
       table.insert(result, item)
-    end, { sort_children = true })
+    end, { sort_children = true, skip_hidden = hidden_items ~= nil, hidden_items = hidden_items })
 
     return result
   end
