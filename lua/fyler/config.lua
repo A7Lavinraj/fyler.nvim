@@ -46,6 +46,7 @@ local M = {}
 ---@field buf_opts table<string, any>
 ---@field extensions string[]
 ---@field follow_current_file boolean
+---@field follow_root_dir boolean
 ---@field hooks fyler.HooksConfig
 ---@field integrations table
 ---@field kind fyler.FinderWindowKind
@@ -346,6 +347,8 @@ local default_config = {
     -- Whether to draw indent guides at each depth level.
     indent_guides = false,
   },
+  -- Follow the finder root as the tab-local working directory.
+  follow_root_dir = true,
   -- Whether to use finder as the default file explorer.
   use_as_default_explorer = true,
 }

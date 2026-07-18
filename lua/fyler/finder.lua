@@ -635,7 +635,9 @@ function Finder:close()
 
   if #vim.fn.win_findbuf(self.buf_id) == 0 then pcall(vim.api.nvim_buf_delete, self.buf_id, { force = true }) end
 
-  vim.cmd.tcd({ args = { vim.fn.fnameescape(vim.fn.getcwd(-1, -1)) }, mods = { silent = true } })
+  if config.DATA.follow_root_dir then
+    vim.cmd.tcd({ args = { vim.fn.fnameescape(vim.fn.getcwd(-1, -1)) }, mods = { silent = true } })
+  end
 end
 
 ---@param args { target_path: string|nil, force: boolean|nil }|nil
@@ -950,7 +952,9 @@ function Finder:open()
     end, 'Ensure cursor boundary')
   end
 
-  vim.cmd.tcd({ args = { vim.fn.fnameescape(self.opts.root_path) }, mods = { silent = true } })
+  if config.DATA.follow_root_dir then
+    vim.cmd.tcd({ args = { vim.fn.fnameescape(self.opts.root_path) }, mods = { silent = true } })
+  end
 
   local target_path = vim.fn.bufname('#')
   if #target_path > 0 and self.opts.follow_current_file then
@@ -1138,7 +1142,9 @@ function Finder:visit(args)
   local old_buf_name = H.buffer_name(self)
   self.state:change_pseudo_root(args.path)
 
-  vim.cmd.tcd({ args = { vim.fn.fnameescape(args.path) }, mods = { silent = true } })
+  if config.DATA.follow_root_dir then
+    vim.cmd.tcd({ args = { vim.fn.fnameescape(args.path) }, mods = { silent = true } })
+  end
   vim.api.nvim_buf_set_name(self.buf_id, H.buffer_name(self))
 
   local old_buf_id = vim.fn.bufnr('^' .. old_buf_name .. '$')
