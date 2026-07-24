@@ -852,6 +852,8 @@ function Finder:open()
   util.window_set_option(self.win_id, 'cursorline', false)
   util.window_set_option(self.win_id, 'number', false)
   util.window_set_option(self.win_id, 'relativenumber', false)
+  util.window_set_option(self.win_id, 'winfixheight', true)
+  util.window_set_option(self.win_id, 'winfixwidth', true)
 
   for name, value in pairs(self.opts.buf_opts or {}) do
     util.buffer_set_option(self.buf_id, name, value)
@@ -870,8 +872,6 @@ function Finder:open()
   util.window_set_option(self.win_id, 'concealcursor', 'nvic')
   util.window_set_option(self.win_id, 'conceallevel', 3)
   util.window_set_option(self.win_id, 'signcolumn', 'yes')
-  util.window_set_option(self.win_id, 'winfixheight', true)
-  util.window_set_option(self.win_id, 'winfixwidth', true)
   util.window_set_option(self.win_id, 'wrap', false)
 
   for mode, keys in pairs(self.opts.mappings or {}) do
