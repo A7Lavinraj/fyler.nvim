@@ -1,4 +1,4 @@
-.PHONY: default format lint gen_vimdoc gen_readme docs tests tests_selected tests_recent
+.PHONY: default format lint gen_vimdoc gen_readme gen_wiki docs tests tests_selected tests_recent
 
 .SILENT:
 
@@ -12,12 +12,12 @@ format:
 lint:
 	selene --config selene/config.toml lua tests
 
-GEN_TARGETS := gen_vimdoc gen_readme
+GEN_TARGETS := gen_vimdoc gen_readme gen_wiki
 
 $(GEN_TARGETS): gen_%:
 	$(NVIM) bin/gen_$*.lua
 
-docs: gen_vimdoc gen_readme
+docs: gen_vimdoc gen_readme gen_wiki
 
 tests:
 	@mkdir -p tmp

@@ -8,6 +8,7 @@ local M = {}
 ---@class fyler.Mapping
 ---@field action string|fun(self: fyler.Finder, args: table)|nil
 ---@field args table|nil
+---@field desc string|nil
 ---@field disabled boolean|nil
 ---@field opts table|nil
 
@@ -85,8 +86,12 @@ local M = {}
 --- - `follow_current_file` is a boolean value which determine
 --- whether to follow current file.
 ---
+--- - `follow_root_dir` is a boolean value which determine whether to
+--- follow the finder's root directory as the tab-local working directory.
+---
 --- - `extensions` is a table value which determine which
 --- extensions to include and how to configure them.
+---   for example:
 ---
 --- >lua
 ---   {
@@ -106,6 +111,7 @@ local M = {}
 ---   occurs: `on_delete(path)` when a file is deleted,
 ---   `on_highlight(highlights, palette)` for highlight customization,
 ---   and `on_rename(old_path, new_path)` when a file is renamed.
+---   for example:
 ---
 --- >lua
 ---   {
@@ -122,6 +128,7 @@ local M = {}
 ---
 --- - `integrations` is a table value which determine external integrations
 ---   to use.
+---   for example:
 ---
 --- >lua
 ---   {
@@ -188,6 +195,7 @@ local M = {}
 ---   `hidden_items` further has `always_hidden`, `always_visible`,
 ---   `patterns`, and `switches` list of patterns. While `indent_guides`
 ---   is a boolean value which shows indentation guides in the buffer.
+---   for example:
 ---
 --- >lua
 ---   {
@@ -281,52 +289,65 @@ local default_config = {
       ['-'] = {
         action = 'visit',
         args = { parent = true },
+        desc = 'Go to parent directory',
       },
       ['.'] = {
         action = 'visit',
         args = { cursor = true },
+        desc = 'Enter directory under cursor',
       },
       ['<BS>'] = {
         action = 'shrink',
         args = { parent = true },
+        desc = 'Collapse parent directory',
       },
       ['<C-R>'] = {
         action = 'refresh',
         args = { recursive = true, force = true },
+        desc = 'Force refresh tree',
       },
       ['<C-S>'] = {
         action = 'select',
         args = { split = true },
+        desc = 'Open in horizontal split',
       },
       ['<C-T>'] = {
         action = 'select',
         args = { tabedit = true },
+        desc = 'Open in new tab',
       },
       ['<C-V>'] = {
         action = 'select',
         args = { vsplit = true },
+        desc = 'Open in vertical split',
       },
       ['<CR>'] = {
         action = 'select',
         args = { pick = true },
+        desc = 'Open with window picker',
       },
       ['<2-LeftMouse>'] = {
         action = 'select',
         args = { pick = true },
+        desc = 'Open with window picker',
       },
       ['='] = {
         action = 'visit',
+        desc = 'Go to root directory',
       },
       ['g.'] = {
         action = 'toggle_ui',
         args = { 'hidden_items' },
+        desc = 'Toggle hidden files',
       },
       ['gi'] = {
         action = 'toggle_ui',
         args = { 'indent_guides' },
+        desc = 'Toggle indent guides',
       },
       ['q'] = {
         action = 'close',
+        desc = 'Close finder',
       },
     },
   },
