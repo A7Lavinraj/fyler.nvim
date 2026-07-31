@@ -1,0 +1,87 @@
+name: CD
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'doc/**'
+      - 'bin/gen_wiki.lua'
+      - '.github/workflows/cd.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wiki-sync
+  cancel-in-progress: true
+
+jobs:
+  wiki:
+    name: Publish wiki pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Neovim
+        uses: actions/cache@v4
+        id: cache-neovim-cd
+        with:
+          path: ~/.local/share/nvim-downloads
+          key: neovim-ubuntu-latest-v0.11.0-cd
+
+      - name: Setup Neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: v0.11.0
+
+      - name: Generate wiki pages
+        run: |
+          set -euo pipefail
+
+          stage="$(mktemp -d)"
+          echo "stage=$stage" >> "$GITHUB_ENV"
+
+          pages=(
+            "fyler.configuration:configuration.md"
+          )
+
+          for entry in "${pages[@]}"; do
+            tag="${entry%%:*}"
+            name="${entry##*:}"
+            nvim --headless --noplugin -l bin/gen_wiki.lua "$stage/$name" "$tag"
+          done
+
+      - name: Publish to wiki
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          stage="${{ env.stage }}"
+          remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git"
+
+          work="$(mktemp -d)"
+          if ! git clone --quiet "$remote" "$work"; then
+            echo "::error::Could not clone ${GITHUB_REPOSITORY}.wiki.git. Enable the wiki and create at least one page via the GitHub UI, then re-run this workflow."
+            exit 1
+          fi
+
+          cp "$stage"/*.md "$work/"
+
+          cd "$work"
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "No wiki changes to publish."
+            exit 0
+          fi
+
+          git add -A
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "docs: update wiki from ${GITHUB_SHA::7}"
+          git push origin HEAD
+
+          echo "::notice::Wiki updated from ${GITHUB_SHA::7}"

@@ -41,7 +41,7 @@ jobs:
         run: make tests
 
   format-lint-docs:
-    name: Format, lint, and docs
+    name: Format, lint, and generate docs
     needs: test
     runs-on: ubuntu-latest
 
@@ -49,14 +49,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Cache Neovim
-        id: cache-neovim
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/nvim-downloads
-          key: neovim-ubuntu-latest-v0.11.0
-
-      - name: Install Neovim
+      - name: Setup Neovim
         uses: rhysd/action-setup-vim@v1
         with:
           neovim: true
@@ -74,7 +67,7 @@ jobs:
         with:
           tool: selene
 
-      - name: Format, lint, and generate documentation
+      - name: Run format, lint, and docs
         run: make --silent format lint docs
 
       - name: Check for changes
