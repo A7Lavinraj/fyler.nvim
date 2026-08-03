@@ -13,14 +13,14 @@ local M = {}
 ---@field opts table|nil
 
 ---@class fyler.HiddenItemsConfig
----@field always_hidden string[]
----@field always_visible string[]
----@field patterns string[]
----@field switches string[]
+---@field always_hidden string[]|nil
+---@field always_visible string[]|nil
+---@field patterns string[]|nil
+---@field switches string[]|nil
 
 ---@class fyler.UiConfig
----@field hidden_items fyler.HiddenItemsConfig
----@field indent_guides boolean
+---@field hidden_items fyler.HiddenItemsConfig|nil
+---@field indent_guides boolean|nil
 
 ---@class fyler.WindowLayoutConfig
 ---@field border string|nil
