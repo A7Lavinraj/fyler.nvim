@@ -148,12 +148,20 @@ H.setup_autocmds = function()
 
     -- TODO: supports all schemes
     -- Hijack directory buffers similar to |netrw|.
-    au('BufEnter', '*', function()
+    au('BufEnter', '*', function(ev)
+      -- Open explorer only on intentional directory edit (not in a script)
+      if vim.api.nvim_get_current_buf() ~= ev.buf or vim.wo.diff then return end
+
       local buf_name = vim.api.nvim_buf_get_name(0)
       if vim.fn.isdirectory(buf_name) == 0 then return end
 
-      vim.api.nvim_buf_delete(0, { force = true })
-      vim.schedule_wrap(Fyler.open)({ root_path = buf_name })
+      -- Delay opening to not act if the buffer was opened temporarily in a script
+      vim.schedule(function()
+        if vim.api.nvim_get_current_buf() ~= ev.buf or vim.wo.diff then return end
+
+        vim.api.nvim_buf_delete(0, { force = true })
+        Fyler.open({ root_path = buf_name })
+      end)
     end, 'Track directory edit')
   end
 
