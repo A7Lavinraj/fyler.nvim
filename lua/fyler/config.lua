@@ -13,14 +13,14 @@ local M = {}
 ---@field opts table|nil
 
 ---@class fyler.HiddenItemsConfig
----@field always_hidden string[]
----@field always_visible string[]
----@field patterns string[]
----@field switches string[]
+---@field always_hidden string[]|nil
+---@field always_visible string[]|nil
+---@field patterns string[]|nil
+---@field switches string[]|nil
 
 ---@class fyler.UiConfig
----@field hidden_items fyler.HiddenItemsConfig
----@field indent_guides boolean
+---@field hidden_items fyler.HiddenItemsConfig|nil
+---@field indent_guides boolean|nil
 
 ---@class fyler.WindowLayoutConfig
 ---@field border string|nil
@@ -45,7 +45,7 @@ local M = {}
 ---@field auto_confirm_simple_mutation boolean
 ---@field bound_cursor boolean
 ---@field buf_opts table<string, any>
----@field extensions string[]
+---@field extensions table<string, table>
 ---@field follow_current_file boolean
 ---@field follow_root_dir boolean
 ---@field hooks fyler.HooksConfig

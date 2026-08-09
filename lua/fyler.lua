@@ -252,8 +252,10 @@ Fyler.setup = function(user_config)
     if inst then return inst.state.pseudo_root_path end
   end
 
+  ---@param opts fyler.FinderOpts|nil
   Fyler.open = function(opts) finder.instance_get(nil, opts):open() end
 
+  ---@param opts fyler.FinderOpts|nil
   Fyler.toggle = function(opts) finder.instance_get(nil, opts):toggle() end
 
   did_setup = true

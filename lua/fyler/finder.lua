@@ -28,7 +28,7 @@ local integration_window_picker = Fyler.import('fyler.integrations.window_picker
 ---@field state fyler.FinderState
 ---@field win_id integer|nil
 
----@class fyler.FinderOpts : fyler.WindowConfig, fyler.Config
+---@class (partial) fyler.FinderOpts : fyler.WindowConfig, fyler.Config
 ---@field scheme string|nil
 ---@field root_path string|nil
 
