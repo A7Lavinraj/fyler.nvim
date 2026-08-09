@@ -6,10 +6,9 @@ vim.opt.runtimepath:prepend(vim.fs.joinpath(vim.fn.getcwd(), 'tmp', 'deps', 'min
 vim.cmd('hi! clear')
 
 local shorten_path = function(bufname)
-  bufname = bufname:gsub('\\', '/')
-  bufname = bufname:gsub('(fyler%-%w+)://.+/tmp/data', '%1://ROOT')
-  bufname = bufname:gsub('^.+/tmp/data', 'ROOT')
-  return bufname
+  bufname = bufname:gsub('\\', '/'):gsub('(fyler%-%w+)://.+/tmp/data', '%1://ROOT')
+  if #bufname > 0 and not bufname:find('fyler%-%w+://') then bufname = vim.fn.fnamemodify(bufname, ':p') end
+  return (bufname:gsub('^.+/tmp/data', 'ROOT'))
 end
 
 function _G.custom_statusline() return shorten_path(vim.fn.expand('%:p')) .. ' %l,%c%V' end
