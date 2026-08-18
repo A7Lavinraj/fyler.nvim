@@ -169,7 +169,9 @@ function M.new(root_path, scheme)
       local data = M.store[node.value]
       if not data then return end
 
-      if opts.skip_hidden and libfs.is_hidden(data.path, opts.hidden_items) then return end
+      -- The root node is never rendered and must not be filtered by hidden items,
+      -- otherwise a dotfile root (e.g. ~/.config) would skip the whole subtree.
+      if depth > 0 and opts.skip_hidden and libfs.is_hidden(data.path, opts.hidden_items) then return end
 
       callback(node, depth)
 
