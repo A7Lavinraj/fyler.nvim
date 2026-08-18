@@ -26,6 +26,17 @@ T['Finder with kind']['can render entries'] = function(kind)
   n.expect_screenshot()
 end
 
+T['Finder with kind']['can render entries from dotfile root'] = function(kind)
+  local tmpdir = helper.get_tmpdir('.hidden-root', { 'a-dir/', 'a-file' })
+  n.fwd_lua('require("fyler").setup')({})
+  n.fwd_lua('require("fyler").open')({ kind = kind, root_path = tmpdir })
+  vim.uv.sleep(10)
+  local lines = n.api.nvim_buf_get_lines(0, 0, -1, false)
+  helper.expect.equality(#lines, 2)
+  helper.expect.match(table.concat(lines, '\n'), 'a-dir')
+  helper.expect.match(table.concat(lines, '\n'), 'a-file')
+end
+
 T['Finder with kind']['can expand directory'] = function(kind)
   local tmpdir = helper.get_tmpdir('data', { 'a-dir/', 'a-dir/aa-file' })
   n.fwd_lua('require("fyler").setup')({})
