@@ -9,6 +9,7 @@ local expect_config = function(field, value) eq(n.lua_get('require("fyler.config
 T['Creates default configuration'] = function()
   n.fwd_lua('require("fyler").setup')()
   expect_config('auto_confirm_simple_mutation', false)
+  expect_config('close_on_select', false)
   expect_config('kind', 'replace')
   expect_config('kind_presets.floating.border', 'single')
   expect_config('kind_presets.floating.height', '80%')
@@ -51,7 +52,8 @@ T['Creates default configuration'] = function()
 end
 
 T['Respect custom configuration'] = function()
-  n.fwd_lua('require("fyler").setup')({ use_as_default_explorer = false })
+  n.fwd_lua('require("fyler").setup')({ close_on_select = true, use_as_default_explorer = false })
+  expect_config('close_on_select', true)
   expect_config('use_as_default_explorer', false)
 end
 

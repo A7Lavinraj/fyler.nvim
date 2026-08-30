@@ -77,6 +77,8 @@ CONFIGURATION ~
     auto_confirm_simple_mutation = false,
     -- Restricts cursor from moving outside editable region
     bound_cursor = true,
+    -- Whether to close the finder after selecting a file
+    close_on_select = false,
     -- Buffer-local options applied to the finder buffer
     -- (see: nvim_set_option_value)
     buf_opts = {},
@@ -235,6 +237,9 @@ whether to skip confirmation for mutation or not.
 
 - `bound_cursor` is a boolean value which determine whether bound
 cursor to functional section or not.
+
+- `close_on_select` is a boolean value which determine whether to close
+the finder after selecting a file.
 
 - `buf_opts` is a table value which determine buffer local options.
 

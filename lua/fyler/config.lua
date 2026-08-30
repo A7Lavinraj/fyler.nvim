@@ -45,6 +45,7 @@ local M = {}
 ---@field auto_confirm_simple_mutation boolean
 ---@field bound_cursor boolean
 ---@field buf_opts table<string, any>
+---@field close_on_select boolean
 ---@field extensions table<string, table>
 ---@field follow_current_file boolean
 ---@field follow_root_dir boolean
@@ -80,6 +81,9 @@ local M = {}
 ---
 --- - `bound_cursor` is a boolean value which determine whether bound
 --- cursor to functional section or not.
+---
+--- - `close_on_select` is a boolean value which determine whether to close
+--- the finder after selecting a file.
 ---
 --- - `buf_opts` is a table value which determine buffer local options.
 ---
@@ -224,6 +228,8 @@ local default_config = {
   auto_confirm_simple_mutation = false,
   -- Restricts cursor from moving outside editable region
   bound_cursor = true,
+  -- Whether to close the finder after selecting a file
+  close_on_select = false,
   -- Buffer-local options applied to the finder buffer
   -- (see: nvim_set_option_value)
   buf_opts = {},

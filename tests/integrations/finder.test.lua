@@ -236,6 +236,25 @@ T['Finder with kind']['can open file in tabedit'] = function(kind)
   n.expect_screenshot()
 end
 
+T['close_on_select closes split finder'] = function()
+  local tmpdir = helper.get_tmpdir('data', { 'a-file' })
+  n.fwd_lua('require("fyler").setup')({ close_on_select = true })
+  n.fwd_lua('require("fyler").open')({ kind = 'split_left', root_path = tmpdir })
+  vim.uv.sleep(10)
+  n.type_keys('<CR>')
+  vim.uv.sleep(10)
+
+  helper.expect.equality(
+    n.lua_get([[(function()
+      for _, win in ipairs(vim.api.nvim_list_wins()) do
+        if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == 'fyler_finder' then return true end
+      end
+      return false
+    end)()]]),
+    false
+  )
+end
+
 T['Finder with kind']['can dispatch refresh'] = function(kind)
   local tmpdir = helper.get_tmpdir('data', { 'a-file', 'b-file' })
   n.fwd_lua('require("fyler").setup')({})
